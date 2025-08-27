@@ -1,10 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import Footer from "@/components/footer/footer.component";
-import Header from "@/components/header/header.component";
-import LandingPage from "@/components/landing page/landing-body";
+import { MotionFooter } from "../utils/motion-wrapper";
 
-export default function Home() {
+export default function Footer() {
   const [showFooter, setShowFooter] = useState(false);
 
   useEffect(() => {
@@ -24,11 +22,13 @@ export default function Home() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  return (
-    <>
-      <Header />
-      <LandingPage />
-      {showFooter && <Footer />}
-    </>
-  );
+  return showFooter ? (
+    <MotionFooter
+      delay={0.2}
+      className="fixed bottom-0 w-full z-50 border-t bg-muted py-4 text-center text-sm text-muted-foreground">
+      <div className="mx-auto max-w-3xl px-4">
+        <p>&copy; 2025 Academia de San Martin. All rights reserved.</p>
+      </div>
+    </MotionFooter>
+  ) : null;
 }
