@@ -16,6 +16,18 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           <div className="hidden sm:flex">
             <NavUser
+              asHeader
+              user={{
+                name: "shadcn",
+                email: "m@example.com",
+                avatar: "/avatars/shadcn.jpg",
+              }}
+            />
+          </div>
+          {/* Mobile user (visible on small screens) */}
+          <div className="sm:hidden">
+            <NavUser
+              asHeader
               user={{
                 name: "shadcn",
                 email: "m@example.com",
