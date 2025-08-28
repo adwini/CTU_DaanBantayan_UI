@@ -107,14 +107,14 @@ export default function Header(): JSX.Element {
               href="/"
               className="flex items-center gap-2 no-underline"
               style={{ WebkitTapHighlightColor: "transparent" }}>
-              <Image
+              {/* <Image
                 src="/logo1.jpg"
                 alt="School Logo 1"
                 width={40}
                 height={40}
                 className="rounded-md object-contain"
                 priority={false}
-              />
+              /> */}
               <Image
                 src="/logo2.png"
                 alt="School Logo 2"
@@ -124,7 +124,9 @@ export default function Header(): JSX.Element {
                 priority={false}
               />
 
-              <span className="font-semibold text-lg md:text-base text-start">
+              <span
+                className="flex-1 text-center md:text-left font-semibold truncate"
+                style={{ fontSize: "clamp(14px, 2.5vw, 20px)" }}>
                 Student Academic Assessment System
               </span>
             </Link>
