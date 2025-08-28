@@ -172,7 +172,7 @@ export default function Header(): JSX.Element {
             </nav>
 
             {/* Mobile toggle and dropdown */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mr-1.5">
               {user && (
                 <div className="relative" ref={menuRef}>
                   <button
@@ -181,7 +181,7 @@ export default function Header(): JSX.Element {
                     {user.email ? user.email.split("@")[0] : "Account"}
                   </button>
                   {dropdownOpen && (
-                    <ul className="absolute right-0 mt-2 w-44 bg-card border border-border rounded-md shadow-md overflow-hidden z-50">
+                    <ul className="absolute right-0 mt-2 w-44 bg-card border border-border rounded-md shadow-md overflow-hidden z-50 transform -translate-x-4 md:translate-x-0">
                       <li>
                         <button
                           className="w-full text-left px-4 py-2 hover:bg-muted/5"

@@ -82,15 +82,24 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
+import { useTheme } from "next-themes";
+
+type ThemeHeader = { light?: string; dark?: string };
 
 type Props = {
   title: ReactNode;
   onClose: () => void;
   size?: "md" | "lg";
-  headerClass?: string;
+  /**
+   * headerClass can be a single class string or an object with light/dark keys.
+   * Examples:
+   *  headerClass="bg-primary"
+   *  headerClass={{ light: 'bg-info', dark: 'bg-info' }}
+   */
+  headerClass?: string | ThemeHeader;
   children: ReactNode;
 };
 
@@ -101,6 +110,10 @@ export default function ModalWrapper({
   headerClass = "bg-primary",
   children,
 }: Props) {
+  const { theme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -112,6 +125,18 @@ export default function ModalWrapper({
       document.body.style.overflow = "";
     };
   }, [onClose]);
+
+  // Resolve header classes based on theme when headerClass is an object
+  const resolveHeaderClass = (): string => {
+    if (typeof headerClass === "string") return headerClass;
+    // headerClass is ThemeHeader
+    const themeToUse = mounted ? resolvedTheme || theme : "light";
+    if (themeToUse === "dark")
+      return headerClass.dark ?? headerClass.light ?? "";
+    return headerClass.light ?? headerClass.dark ?? "";
+  };
+
+  const effectiveHeaderClass = resolveHeaderClass();
 
   return (
     <AnimatePresence>
@@ -150,7 +175,7 @@ export default function ModalWrapper({
           <div className="bg-card border border-border rounded-lg shadow-lg overflow-hidden">
             {/* Header */}
             <div
-              className={`flex items-center justify-between px-4 py-3 border-b ${headerClass} text-white`}>
+              className={`flex items-center justify-between px-4 py-3 border-b ${effectiveHeaderClass} text-white`}>
               <h5 className="text-lg font-semibold flex items-center gap-2">
                 {title}
               </h5>
