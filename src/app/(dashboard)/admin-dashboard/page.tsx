@@ -11,8 +11,6 @@ import Header from "@/components/header/header.component";
 export default function Page() {
   return (
     <>
-      {/* <Header /> */}
-
       <SidebarProvider
         style={
           {
