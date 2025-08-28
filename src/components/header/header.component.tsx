@@ -12,7 +12,7 @@ type User = {
   role?: string;
   studentId?: string;
   email?: string;
-  [k: string]: any;
+  [k: string]: unknown;
 };
 
 export default function Header(): JSX.Element {

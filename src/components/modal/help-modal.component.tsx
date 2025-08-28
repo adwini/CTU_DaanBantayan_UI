@@ -42,7 +42,8 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
         for technical help?
       </h6>
       <p>
-        Please refer to the contact modal or email the school's IT support team.
+        Please refer to the contact modal or email the school&apos;s IT support
+        team.
       </p>
     </ModalWrapper>
   );
