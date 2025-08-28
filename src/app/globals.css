@@ -120,6 +120,11 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Increase base font size for both mobile and desktop. Adjust value if needed. */
+  html {
+    font-size: 18px; /* previously 16px default; this makes rem sizes larger globally */
+  }
 }
 
 @layer base {

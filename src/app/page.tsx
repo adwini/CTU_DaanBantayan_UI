@@ -28,7 +28,8 @@ export default function Home() {
     <>
       <Header />
       <LandingPage />
-      {showFooter && <Footer />}
+      {/* Add a margin top to the footer so it doesn't overlap content */}
+      <div className="mt-16">{showFooter && <Footer />}</div>
     </>
   );
 }

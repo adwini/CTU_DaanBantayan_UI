@@ -128,7 +128,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroup>
 
           {/* Reports and Settings */}
-          <SidebarGroup className="mt-auto">
+          <SidebarGroup>
             <SidebarGroupLabel>Reports and Settings</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -171,9 +171,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter>
-          <NavUser user={user} />
-        </SidebarFooter>
       </Sidebar>
     </>
   );
