@@ -38,6 +38,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const user = {
@@ -46,7 +47,34 @@ const user = {
   avatar: "/avatars/shadcn.jpg",
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export type NavigationItem =
+  | "dashboard"
+  | "manage-users"
+  | "manage-sections"
+  | "subject-management"
+  | "teacher-loads"
+  | "grade-monitoring"
+  | "attendance-overview"
+  | "reports"
+  | "settings";
+
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  onNavigate?: (item: NavigationItem) => void;
+  activeItem?: NavigationItem;
+}
+
+export function AppSidebar({
+  onNavigate,
+  activeItem,
+  ...props
+}: AppSidebarProps) {
+  const { setOpenMobile } = useSidebar();
+
+  const handleNavigation = (item: NavigationItem) => {
+    onNavigate?.(item);
+    // Close sidebar on mobile after navigation
+    setOpenMobile(false);
+  };
   return (
     <>
       <Sidebar collapsible="offcanvas" {...props}>
@@ -54,12 +82,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                asChild
-                className="data-[slot=sidebar-menu-button]:!p-1.5">
-                <a href="#">
-                  <IconInnerShadowTop className="!size-5" />
-                  <span className="text-base font-semibold">Acme Inc.</span>
-                </a>
+                onClick={() => handleNavigation("dashboard")}
+                className="data-[slot=sidebar-menu-button]:!p-1.5 cursor-pointer">
+                <IconInnerShadowTop className="!size-5" />
+                <span className="text-base font-semibold">CTU Dashboard</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -70,27 +96,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupLabel>Management</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <IconUsers />
-                    <span>Manage Users</span>
-                  </a>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("manage-users")}
+                  className={
+                    activeItem === "manage-users"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconUsers />
+                  <span>Manage Users</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <IconListDetails />
-                    <span>Manage Sections</span>
-                  </a>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("manage-sections")}
+                  className={
+                    activeItem === "manage-sections"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconListDetails />
+                  <span>Manage Sections</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <IconFileDescription />
-                    <span>Subject Management</span>
-                  </a>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("subject-management")}
+                  className={
+                    activeItem === "subject-management"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconFileDescription />
+                  <span>Subject Management</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -101,27 +139,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupLabel>Monitoring</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <IconChartBar />
-                    <span>Teacher Loads</span>
-                  </a>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("teacher-loads")}
+                  className={
+                    activeItem === "teacher-loads"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconChartBar />
+                  <span>Teacher Loads</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <IconReport />
-                    <span>Grade Monitoring</span>
-                  </a>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("grade-monitoring")}
+                  className={
+                    activeItem === "grade-monitoring"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconReport />
+                  <span>Grade Monitoring</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <IconCalendar />
-                    <span>Attendance Overview</span>
-                  </a>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("attendance-overview")}
+                  className={
+                    activeItem === "attendance-overview"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconCalendar />
+                  <span>Attendance Overview</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -132,40 +182,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupLabel>Reports and Settings</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton>
-                      <IconReport />
-                      <span>Reports</span>
-                    </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-44 rounded-lg">
-                    <DropdownMenuItem>
-                      <IconFileDescription />
-                      <span>Grades</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <IconCalendar />
-                      <span>Attendance</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <IconUsers />
-                      <span>Student List</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <IconChartBar />
-                      <span>Teacher Loads</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("reports")}
+                  className={
+                    activeItem === "reports"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconReport />
+                  <span>Reports</span>
+                </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
-                    <IconSettings />
-                    <span>Settings</span>
-                  </a>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("settings")}
+                  className={
+                    activeItem === "settings"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconSettings />
+                  <span>Settings</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
