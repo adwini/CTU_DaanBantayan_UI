@@ -1,9 +1,16 @@
-import { ChartAreaInteractive } from "@/components/dashboard/chart-area-interactive";
 import { DataTable } from "@/components/dashboard/data-table";
 import { SectionCards } from "@/components/dashboard/section-cards";
 
 interface DashboardHomeProps {
-  data: any[];
+  data: Array<{
+    id: number;
+    header: string;
+    type: string;
+    status: string;
+    target: string;
+    limit: string;
+    reviewer: string;
+  }>;
 }
 
 export function DashboardHomeComponent({ data }: DashboardHomeProps) {

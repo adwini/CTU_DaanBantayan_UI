@@ -2,36 +2,18 @@
 
 import * as React from "react";
 import {
-  IconCamera,
   IconChartBar,
-  IconDashboard,
-  IconDatabase,
-  IconFileAi,
   IconFileDescription,
-  IconFileWord,
-  IconFolder,
   IconCalendar,
-  IconHelp,
-  IconInnerShadowTop,
   IconListDetails,
   IconReport,
-  IconSearch,
   IconSettings,
   IconUsers,
 } from "@tabler/icons-react";
 
-import { NavUser } from "@/components/dashboard/nav-user";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarGroup,
   SidebarGroupLabel,
@@ -40,12 +22,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-
-const user = {
-  name: "shadcn",
-  email: "m@example.com",
-  avatar: "/avatars/shadcn.jpg",
-};
 
 export type NavigationItem =
   | "dashboard"
@@ -83,9 +59,14 @@ export function AppSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => handleNavigation("dashboard")}
-                className="data-[slot=sidebar-menu-button]:!p-1.5 cursor-pointer">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">CTU Dashboard</span>
+                className="data-[slot=sidebar-menu-button]:!p-2 cursor-pointer flex items-center gap-3">
+                <img
+                  src="/logo1.jpg"
+                  alt="Academia de San Martin logo"
+                  className="h-8 w-auto"
+                />
+
+                <span className="text-base font-semibold">SAAS Dashboard</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

@@ -1,25 +1,19 @@
 import {
-  IconTrendingDown,
-  IconTrendingUp,
   IconUsers,
   IconListDetails,
   IconFileWord,
   IconChartBar,
-  IconCalendar,
   IconUsersGroup,
 } from "@tabler/icons-react";
-// import SmallIcon from "@/components/ui/icon";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MotionCard } from "../utils/motion-wrapper";
+import { MotionCardDash } from "../utils/motion-wrapper";
 
 export function SectionCards() {
   return (

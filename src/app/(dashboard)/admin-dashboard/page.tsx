@@ -4,8 +4,6 @@ import { useState } from "react";
 import { AppSidebar, NavigationItem } from "@/components/dashboard/app-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-
-// Import page components
 import { DashboardHomeComponent } from "@/components/dashboard/pages/DashboardHomeComponent";
 import { ManageUsersComponent } from "@/components/dashboard/pages/ManageUsersComponent";
 import { ManageSectionsComponent } from "@/components/dashboard/pages/ManageSectionsComponent";

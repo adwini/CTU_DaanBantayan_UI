@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 // MotionCard: Hover animation for cards
@@ -16,8 +15,12 @@ export const MotionCard = ({ children }: { children?: ReactNode }) => (
 
 export const MotionCardDash = ({
   children,
+  className,
   ...props
-}: { children?: ReactNode; className?: string } & Record<string, any>) => (
+}: {
+  children?: ReactNode;
+  className?: string;
+} & Record<string, unknown>) => (
   <motion.div
     whileHover={{ scale: 1.03, y: -4 }}
     whileFocus={{ scale: 1.02, y: -2 }}
