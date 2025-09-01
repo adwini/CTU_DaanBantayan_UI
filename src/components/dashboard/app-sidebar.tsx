@@ -26,6 +26,8 @@ import {
 export type NavigationItem =
   | "dashboard"
   | "manage-users"
+  | "manage-users-reusable"
+  | "manage-courses"
   | "manage-sections"
   | "subject-management"
   | "teacher-loads"
@@ -86,6 +88,30 @@ export function AppSidebar({
                   }>
                   <IconUsers />
                   <span>Manage Users</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("manage-users-reusable")}
+                  className={
+                    activeItem === "manage-users-reusable"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconUsers />
+                  <span>Users (Reusable)</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => handleNavigation("manage-courses")}
+                  className={
+                    activeItem === "manage-courses"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "cursor-pointer"
+                  }>
+                  <IconFileDescription />
+                  <span>Manage Courses</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
