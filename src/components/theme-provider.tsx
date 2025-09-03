@@ -12,7 +12,8 @@ export default function ThemeProviderWrapper({
     <ThemeProvider
       attribute="data-theme"
       enableSystem={false}
-      defaultTheme="light">
+      defaultTheme="light"
+      disableTransitionOnChange>
       {children}
     </ThemeProvider>
   );
