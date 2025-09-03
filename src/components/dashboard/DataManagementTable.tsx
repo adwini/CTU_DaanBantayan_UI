@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { IconPlus, IconSearch, IconDots } from "@tabler/icons-react";
+import { IconPlus, IconSearch, IconDots, IconX } from "@tabler/icons-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -409,8 +409,16 @@ export function DataManagementTable({
                   placeholder={searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label="Clear search">
+                    <IconX className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
               {/* Dynamic Filters */}
