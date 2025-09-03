@@ -7,11 +7,9 @@ import { NavigationItem } from "./app-sidebar";
 const getPageTitle = (activeItem: NavigationItem): string => {
   const titleMap: Record<NavigationItem, string> = {
     dashboard: "Dashboard",
-    "manage-users": "Manage Users",
-    "manage-users-reusable": "Users (Reusable Component)",
-    "manage-courses": "Manage Courses",
+    "manage-users-reusable": "Manage Users",
     "manage-sections": "Manage Sections",
-    "subject-management": "Subject Management",
+    "manage-subjects": "Manage Subjects",
     "teacher-loads": "Teacher Loads",
     "grade-monitoring": "Grade Monitoring",
     "attendance-overview": "Attendance Overview",

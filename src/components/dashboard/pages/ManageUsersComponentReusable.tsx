@@ -13,9 +13,6 @@ interface User extends BaseItem {
   name: string;
   email: string;
   role: string;
-  studentId?: string;
-  section?: string;
-  gradeLevel?: string;
 }
 
 // Sample data
@@ -25,9 +22,6 @@ const sampleUsers: User[] = [
     name: "John Doe",
     email: "john.doe@school.edu",
     role: "Teacher",
-    studentId: "",
-    section: "Science Dept",
-    gradeLevel: "",
     status: "active",
   },
   {
@@ -35,9 +29,6 @@ const sampleUsers: User[] = [
     name: "Jane Smith",
     email: "jane.smith@school.edu",
     role: "Student",
-    studentId: "2024001",
-    section: "Grade 10-A",
-    gradeLevel: "10",
     status: "active",
   },
   {
@@ -45,9 +36,6 @@ const sampleUsers: User[] = [
     name: "Admin User",
     email: "admin@school.edu",
     role: "Admin",
-    studentId: "",
-    section: "",
-    gradeLevel: "",
     status: "active",
   },
   {
@@ -55,25 +43,11 @@ const sampleUsers: User[] = [
     name: "Mary Johnson",
     email: "mary.johnson@school.edu",
     role: "Student",
-    studentId: "2024002",
-    section: "Grade 9-B",
-    gradeLevel: "9",
     status: "inactive",
   },
 ];
 
 const roles = ["Admin", "Teacher", "Student"];
-const gradeLevels = ["7", "8", "9", "10", "11", "12"];
-const sections = [
-  "Grade 7-A",
-  "Grade 7-B",
-  "Grade 8-A",
-  "Grade 8-B",
-  "Grade 9-A",
-  "Grade 9-B",
-  "Grade 10-A",
-  "Grade 10-B",
-];
 
 // Table columns configuration
 const userColumns: TableColumn[] = [
@@ -98,44 +72,6 @@ const userFormFields: FormField[] = [
     type: "select",
     required: true,
     options: roles,
-  },
-  {
-    key: "studentId",
-    label: "Student ID",
-    type: "text",
-    required: true,
-    placeholder: "e.g., 2024001",
-    dependsOn: "role",
-    dependsOnValue: "Student",
-  },
-  {
-    key: "section",
-    label: "Section",
-    type: "select",
-    options: sections,
-    dependsOn: "role",
-    dependsOnValue: "Student",
-    gridColumn: 2,
-  },
-  {
-    key: "gradeLevel",
-    label: "Grade Level",
-    type: "select",
-    options: gradeLevels.map((grade) => ({
-      value: grade,
-      label: `Grade ${grade}`,
-    })),
-    dependsOn: "role",
-    dependsOnValue: "Student",
-    gridColumn: 2,
-  },
-  {
-    key: "section",
-    label: "Department/Section",
-    type: "text",
-    placeholder: "e.g., Science Department",
-    dependsOn: "role",
-    dependsOnValue: ["Teacher"],
   },
 ];
 
@@ -194,8 +130,8 @@ export function ManageUsersComponent() {
 
   return (
     <DataManagementTable
-      title="Manage Users (Reusable)"
-      description="Add, edit, and manage system users including students and teachers."
+      title="Manage Users"
+      description="Add, edit, and manage system users including students, teachers, and admins."
       data={sampleUsers}
       columns={userColumns}
       formFields={userFormFields}

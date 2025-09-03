@@ -25,11 +25,9 @@ import {
 
 export type NavigationItem =
   | "dashboard"
-  | "manage-users"
   | "manage-users-reusable"
-  | "manage-courses"
   | "manage-sections"
-  | "subject-management"
+  | "manage-subjects"
   | "teacher-loads"
   | "grade-monitoring"
   | "attendance-overview"
@@ -80,18 +78,6 @@ export function AppSidebar({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={() => handleNavigation("manage-users")}
-                  className={
-                    activeItem === "manage-users"
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "cursor-pointer"
-                  }>
-                  <IconUsers />
-                  <span>Manage Users</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
                   onClick={() => handleNavigation("manage-users-reusable")}
                   className={
                     activeItem === "manage-users-reusable"
@@ -99,19 +85,7 @@ export function AppSidebar({
                       : "cursor-pointer"
                   }>
                   <IconUsers />
-                  <span>Users (Reusable)</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => handleNavigation("manage-courses")}
-                  className={
-                    activeItem === "manage-courses"
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "cursor-pointer"
-                  }>
-                  <IconFileDescription />
-                  <span>Manage Courses</span>
+                  <span>Manage Users</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -128,14 +102,14 @@ export function AppSidebar({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={() => handleNavigation("subject-management")}
+                  onClick={() => handleNavigation("manage-subjects")}
                   className={
-                    activeItem === "subject-management"
+                    activeItem === "manage-subjects"
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "cursor-pointer"
                   }>
                   <IconFileDescription />
-                  <span>Subject Management</span>
+                  <span>Manage Subjects</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

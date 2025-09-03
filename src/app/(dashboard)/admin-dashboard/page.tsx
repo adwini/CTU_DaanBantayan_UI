@@ -5,11 +5,9 @@ import { AppSidebar, NavigationItem } from "@/components/dashboard/app-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardHomeComponent } from "@/components/dashboard/pages/DashboardHomeComponent";
-import { ManageUsersComponent } from "@/components/dashboard/pages/ManageUsersComponent";
 import { ManageUsersComponent as ManageUsersReusable } from "@/components/dashboard/pages/ManageUsersComponentReusable";
-import { ManageCoursesComponent } from "@/components/dashboard/pages/ManageCoursesComponent";
 import { ManageSectionsComponent } from "@/components/dashboard/pages/ManageSectionsComponent";
-import { SubjectManagementComponent } from "@/components/dashboard/pages/SubjectManagementComponent";
+import { ManageSubjectsComponent } from "@/components/dashboard/pages/ManageSubjectsComponent";
 import { TeacherLoadsComponent } from "@/components/dashboard/pages/TeacherLoadsComponent";
 import { GradeMonitoringComponent } from "@/components/dashboard/pages/GradeMonitoringComponent";
 import { AttendanceOverviewComponent } from "@/components/dashboard/pages/AttendanceOverviewComponent";
@@ -29,16 +27,12 @@ export default function Page() {
     switch (activeView) {
       case "dashboard":
         return <DashboardHomeComponent data={data} />;
-      case "manage-users":
-        return <ManageUsersComponent />;
       case "manage-users-reusable":
         return <ManageUsersReusable />;
-      case "manage-courses":
-        return <ManageCoursesComponent />;
       case "manage-sections":
         return <ManageSectionsComponent />;
-      case "subject-management":
-        return <SubjectManagementComponent />;
+      case "manage-subjects":
+        return <ManageSubjectsComponent />;
       case "teacher-loads":
         return <TeacherLoadsComponent />;
       case "grade-monitoring":
