@@ -521,7 +521,7 @@ export function DataManagementTable({
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-gray-50 hover:bg-gray-50">
                     {columns.map((column) => (
                       <TableHead key={column.key}>{column.label}</TableHead>
                     ))}
