@@ -414,7 +414,7 @@ export function DataManagementTable({
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-200 hover:bg-accent rounded-sm p-1"
                     aria-label="Clear search">
                     <IconX className="h-4 w-4" />
                   </button>
@@ -450,7 +450,9 @@ export function DataManagementTable({
               {/* Add Item Button */}
               <Dialog open={isModalOpen} onOpenChange={handleModalClose}>
                 <DialogTrigger asChild>
-                  <Button onClick={handleAddItem}>
+                  <Button
+                    onClick={handleAddItem}
+                    className="btn-ctu-primary shadow-sm">
                     <IconPlus className="h-4 w-4 mr-2" />
                     {addButtonText}
                   </Button>
@@ -501,14 +503,15 @@ export function DataManagementTable({
                       []
                     )}
 
-                    <div className="flex justify-end space-x-2 pt-4">
+                    <div className="flex justify-end space-x-2 pt-6 border-t border-border/50">
                       <Button
                         type="button"
                         variant="outline"
+                        className="btn-ctu-secondary"
                         onClick={() => resetForm()}>
                         Cancel
                       </Button>
-                      <Button type="submit">
+                      <Button type="submit" className="btn-ctu-primary">
                         {isEditMode ? "Update Item" : "Add Item"}
                       </Button>
                     </div>
@@ -518,16 +521,24 @@ export function DataManagementTable({
             </div>
 
             {/* Items Table */}
-            <div className="rounded-md border">
+            <div className="rounded-lg border shadow-sm card-enhanced">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50 hover:bg-gray-50">
+                  <TableRow className="table-header-enhanced hover:from-primary/8 hover:to-primary/15 transition-all duration-200">
                     {columns.map((column) => (
-                      <TableHead key={column.key}>{column.label}</TableHead>
+                      <TableHead
+                        key={column.key}
+                        className="font-semibold text-foreground">
+                        {column.label}
+                      </TableHead>
                     ))}
                     {(actions.edit ||
                       actions.statusToggle ||
-                      actions.delete) && <TableHead>Actions</TableHead>}
+                      actions.delete) && (
+                      <TableHead className="font-semibold text-foreground">
+                        Actions
+                      </TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -535,13 +546,18 @@ export function DataManagementTable({
                     <TableRow>
                       <TableCell
                         colSpan={columns.length + 1}
-                        className="text-center py-8 text-gray-500">
-                        No items found
+                        className="text-center py-12 text-muted-foreground animate-fade-in">
+                        <div className="flex flex-col items-center gap-2">
+                          <IconSearch className="h-8 w-8 text-muted-foreground/40" />
+                          <span>No items found</span>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredItems.map((item) => (
-                      <TableRow key={item.id}>
+                      <TableRow
+                        key={item.id}
+                        className="hover:bg-accent/50 transition-colors duration-150 animate-fade-in">
                         {columns.map((column) => (
                           <TableCell
                             key={column.key}
