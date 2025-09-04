@@ -152,7 +152,7 @@ export function AppSidebar({
                       : "cursor-pointer"
                   }>
                   <IconCalendar />
-                  <span>Attendance Overview</span>
+                  <span>Attendance Overview (SKIP)</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

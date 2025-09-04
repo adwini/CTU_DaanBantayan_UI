@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { TimePicker, DateTimePicker } from "@/components/ui/datetime-picker";
 import { IconPlus, IconSearch, IconDots, IconX } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -54,7 +55,7 @@ export interface TableColumn {
 export interface FormField {
   key: string;
   label: string;
-  type: "text" | "email" | "select" | "number";
+  type: "text" | "email" | "select" | "number" | "time" | "datetime";
   required?: boolean;
   placeholder?: string;
   options?: string[] | { value: string; label: string }[];
@@ -346,6 +347,56 @@ export function DataManagementTable({
               placeholder={field.placeholder}
               onChange={(e) => handleInputChange(field.key, e.target.value)}
               autoFocus={false}
+            />
+          </div>
+        );
+
+      case "time":
+        return (
+          <div key={field.key} className="space-y-2">
+            <TimePicker
+              label={field.label}
+              value={fieldValue}
+              onChange={(value) => handleInputChange(field.key, value)}
+              required={field.required}
+              placeholder={field.placeholder}
+              id={field.key}
+            />
+          </div>
+        );
+
+      case "datetime":
+        return (
+          <div key={field.key} className="space-y-2">
+            <DateTimePicker
+              label={field.label}
+              value={
+                fieldValue
+                  ? (() => {
+                      // Parse the datetime value if it exists
+                      if (
+                        typeof fieldValue === "string" &&
+                        fieldValue.includes("T")
+                      ) {
+                        const [date, time] = fieldValue.split("T");
+                        return { date, time: time.slice(0, 5) }; // Remove seconds
+                      }
+                      return { date: "", time: "" };
+                    })()
+                  : { date: "", time: "" }
+              }
+              onChange={(value) => {
+                // Combine date and time into ISO string format
+                if (value.date && value.time) {
+                  const datetime = `${value.date}T${value.time}:00`;
+                  handleInputChange(field.key, datetime);
+                } else {
+                  handleInputChange(field.key, "");
+                }
+              }}
+              required={field.required}
+              placeholder={field.placeholder}
+              id={field.key}
             />
           </div>
         );
