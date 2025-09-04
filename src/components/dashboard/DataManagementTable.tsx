@@ -263,6 +263,14 @@ export function DataManagementTable({
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  const clearAllFilters = () => {
+    setFilters({});
+  };
+
+  const hasActiveFilters = Object.values(filters).some(
+    (value) => value && value !== "All"
+  );
+
   const renderFormField = (field: FormField, index: number) => {
     // Check if field should be shown based on dependencies
     if (field.dependsOn && field.dependsOnValue) {
@@ -497,6 +505,17 @@ export function DataManagementTable({
                   </SelectContent>
                 </Select>
               ))}
+
+              {/* Clear All Filters Button */}
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="text-sm">
+                  Clear All Filters
+                </Button>
+              )}
 
               {/* Add Item Button */}
               <Dialog open={isModalOpen} onOpenChange={handleModalClose}>
