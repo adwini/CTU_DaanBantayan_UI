@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,8 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const { login, authState } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -30,6 +33,14 @@ export function LoginForm({
     email?: string;
     password?: string;
   }>({});
+
+  // Check if user is already authenticated and redirect
+  useEffect(() => {
+    if (authState.isAuthenticated && !authState.isLoading) {
+      const redirectPath = searchParams.get("redirect") || "/admin-dashboard";
+      router.push(redirectPath);
+    }
+  }, [authState.isAuthenticated, authState.isLoading, router, searchParams]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

@@ -5,6 +5,8 @@ import Footer from "@/components/footer/footer.component";
 import Header from "@/components/header/header.component";
 import ThemeProviderWrapper from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/auth.context";
+import ProfileGuard from "@/components/profile/profile-guard";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,9 +35,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProviderWrapper>
           <AuthProvider>
-            {children}
-            <div className="pb-15" />
-            <Footer />
+            <ProfileGuard>
+              {children}
+              <div className="pb-15" />
+              <Footer />
+            </ProfileGuard>
+            <Toaster />
           </AuthProvider>
         </ThemeProviderWrapper>
       </body>

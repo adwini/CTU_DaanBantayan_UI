@@ -67,15 +67,11 @@ class AuthenticationService {
    */
   async refreshToken(userId: string): Promise<string> {
     try {
-      const response = await apiClient.post<string>("/api/auth/refresh", null, {
-        "Content-Type": "application/x-www-form-urlencoded",
-      });
-
-      // Add userId as query parameter
+      // Add userId as query parameter as per API documentation
       const url = `/api/auth/refresh?userId=${encodeURIComponent(userId)}`;
-      const refreshResponse = await apiClient.post<string>(url);
+      const response = await apiClient.post<string>(url);
 
-      return refreshResponse.data;
+      return response.data;
     } catch (error) {
       if (error instanceof ApiError) {
         throw new Error(this.getErrorMessage(error));
@@ -104,15 +100,105 @@ class AuthenticationService {
    */
   async checkAuthStatus(): Promise<AuthStatusResponse> {
     try {
-      // Try to get current user profile - this will fail if not authenticated
-      const profile = await this.getCurrentUser();
-      return {
-        isAuthenticated: true,
-        user: profile.user,
-        profile: profile,
-      };
+      console.log("🔍 Checking authentication status...");
+
+      // Try to get current user profile first
+      try {
+        const profile = await this.getCurrentUser();
+        console.log(
+          "✅ Authentication check successful with profile:",
+          profile
+        );
+        return {
+          isAuthenticated: true,
+          user: profile.user,
+          profile: profile,
+        };
+      } catch (profileError) {
+        console.log(
+          "⚠️ Profile fetch failed (likely admin without profile):",
+          profileError
+        );
+
+        // If profile fails, try to make any authenticated request to verify JWT is valid
+        // We'll try a few different endpoints to see if we're still authenticated
+        try {
+          // Try the teachers endpoint first
+          await apiClient.get("/api/teachers");
+          console.log(
+            "✅ Authentication verified via teachers endpoint - user is authenticated but has no profile"
+          );
+
+          // If we have saved user info in localStorage, use it
+          if (typeof window !== "undefined") {
+            const savedState = localStorage.getItem("auth_state");
+            if (savedState) {
+              try {
+                const parsed = JSON.parse(savedState);
+                if (parsed.user) {
+                  console.log("✅ Using saved user info from localStorage");
+                  return {
+                    isAuthenticated: true,
+                    user: parsed.user,
+                    profile: undefined,
+                  };
+                }
+              } catch (e) {
+                console.warn("Failed to parse saved auth state");
+              }
+            }
+          }
+
+          // Fallback: authenticated but no user info available
+          return {
+            isAuthenticated: true,
+            user: undefined,
+            profile: undefined,
+          };
+        } catch (teachersError) {
+          console.log("❌ Teachers endpoint also failed, trying subjects...");
+
+          try {
+            // Try subjects endpoint as another fallback
+            await apiClient.get("/api/subjects");
+            console.log("✅ Authentication verified via subjects endpoint");
+
+            // Same logic as above - try to get user from localStorage
+            if (typeof window !== "undefined") {
+              const savedState = localStorage.getItem("auth_state");
+              if (savedState) {
+                try {
+                  const parsed = JSON.parse(savedState);
+                  if (parsed.user) {
+                    console.log("✅ Using saved user info from localStorage");
+                    return {
+                      isAuthenticated: true,
+                      user: parsed.user,
+                      profile: undefined,
+                    };
+                  }
+                } catch (e) {
+                  console.warn("Failed to parse saved auth state");
+                }
+              }
+            }
+
+            return {
+              isAuthenticated: true,
+              user: undefined,
+              profile: undefined,
+            };
+          } catch (subjectsError) {
+            console.log(
+              "❌ All authentication verification attempts failed:",
+              subjectsError
+            );
+            throw subjectsError;
+          }
+        }
+      }
     } catch (error) {
-      // Silently fail - user is not authenticated
+      console.log("❌ Authentication check failed:", error);
       return {
         isAuthenticated: false,
       };
@@ -124,9 +210,7 @@ class AuthenticationService {
    */
   async getAllTeachers(): Promise<ProfileResponse[]> {
     try {
-      const response = await apiClient.get<ProfileResponse[]>(
-        "/api/users/teachers"
-      );
+      const response = await apiClient.get<ProfileResponse[]>("/api/teachers");
       return response.data;
     } catch (error) {
       if (error instanceof ApiError) {

@@ -24,13 +24,36 @@ import {
 } from "@/types/auth";
 
 // Initial state
-const initialState: AuthState = {
-  isAuthenticated: false,
-  isLoading: true,
-  user: null,
-  profile: null,
-  error: null,
+const getInitialState = (): AuthState => {
+  // Try to restore state from localStorage if available
+  if (typeof window !== "undefined") {
+    try {
+      const savedState = localStorage.getItem("auth_state");
+      console.log("🔍 Restoring auth state from localStorage:", savedState);
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        console.log("✅ Parsed saved state:", parsed);
+        return {
+          ...parsed,
+          isLoading: true, // Always start with loading to verify auth
+        };
+      }
+    } catch (error) {
+      console.warn("Failed to restore auth state from localStorage:", error);
+    }
+  }
+
+  console.log("🔄 Using default initial state");
+  return {
+    isAuthenticated: false,
+    isLoading: true,
+    user: null,
+    profile: null,
+    error: null,
+  };
 };
+
+const initialState: AuthState = getInitialState();
 
 // Action types
 type AuthAction =
@@ -46,16 +69,19 @@ type AuthAction =
 
 // Reducer function
 function authReducer(state: AuthState, action: AuthAction): AuthState {
+  let newState: AuthState;
+
   switch (action.type) {
     case "AUTH_START":
-      return {
+      newState = {
         ...state,
         isLoading: true,
         error: null,
       };
+      break;
 
     case "AUTH_SUCCESS":
-      return {
+      newState = {
         ...state,
         isAuthenticated: true,
         isLoading: false,
@@ -63,9 +89,10 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         profile: action.payload.profile,
         error: null,
       };
+      break;
 
     case "AUTH_FAILURE":
-      return {
+      newState = {
         ...state,
         isAuthenticated: false,
         isLoading: false,
@@ -73,28 +100,59 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         profile: null,
         error: action.payload,
       };
+      break;
 
     case "AUTH_LOGOUT":
-      return {
-        ...initialState,
+      newState = {
+        isAuthenticated: false,
         isLoading: false,
+        user: null,
+        profile: null,
+        error: null,
       };
+      break;
 
     case "CLEAR_ERROR":
-      return {
+      newState = {
         ...state,
         error: null,
       };
+      break;
 
     case "SET_LOADING":
-      return {
+      newState = {
         ...state,
         isLoading: action.payload,
       };
+      break;
 
     default:
-      return state;
+      newState = state;
   }
+
+  // Save to localStorage (except during SSR)
+  if (typeof window !== "undefined" && newState !== state) {
+    try {
+      if (newState.isAuthenticated) {
+        const stateToSave = {
+          isAuthenticated: newState.isAuthenticated,
+          user: newState.user,
+          profile: newState.profile,
+          isLoading: false,
+          error: null,
+        };
+        console.log("💾 Saving auth state to localStorage:", stateToSave);
+        localStorage.setItem("auth_state", JSON.stringify(stateToSave));
+      } else {
+        console.log("🗑️ Removing auth state from localStorage");
+        localStorage.removeItem("auth_state");
+      }
+    } catch (error) {
+      console.warn("Failed to save auth state to localStorage:", error);
+    }
+  }
+
+  return newState;
 }
 
 // Create the context
@@ -118,22 +176,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Check authentication status
   const checkAuthStatus = useCallback(async () => {
     try {
+      console.log("🔍 Context: Starting auth check...");
       dispatch({ type: "AUTH_START" });
-      const authStatus = await authService.checkAuthStatus();
 
-      if (authStatus.isAuthenticated && authStatus.user && authStatus.profile) {
+      // First try to get the profile (which includes user info)
+      const authStatus = await authService.checkAuthStatus();
+      console.log("📊 Context: Auth status response:", authStatus);
+
+      if (authStatus.isAuthenticated && authStatus.user) {
+        console.log(
+          "✅ Context: User is authenticated, dispatching AUTH_SUCCESS"
+        );
         dispatch({
           type: "AUTH_SUCCESS",
           payload: {
             user: authStatus.user,
-            profile: authStatus.profile,
+            profile: authStatus.profile || null,
           },
         });
       } else {
+        console.log("❌ Context: User not authenticated, clearing state");
+        // Clear localStorage and set to logged out
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("auth_state");
+        }
         dispatch({ type: "AUTH_LOGOUT" });
       }
     } catch (error) {
-      // Silently handle auth check failure - user is not authenticated
+      console.warn("❌ Context: Auth check failed:", error);
+      // Clear localStorage and set to logged out
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_state");
+      }
       dispatch({ type: "AUTH_LOGOUT" });
     }
   }, []);
@@ -164,8 +238,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           },
         });
 
-        // Redirect to dashboard based on role
-        const redirectPath = getRedirectPath(loginResponse.userResponse.role);
+        // Check for redirect parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectPath =
+          urlParams.get("redirect") ||
+          getRedirectPath(loginResponse.userResponse.role);
+
         router.push(redirectPath);
       } catch (error) {
         const errorMessage =
@@ -184,6 +262,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      // Clear localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_state");
+      }
       dispatch({ type: "AUTH_LOGOUT" });
       router.push("/login");
     }
@@ -225,6 +307,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [router]);
 
+  // Refresh profile function
+  const refreshProfile = useCallback(async () => {
+    try {
+      const profile = await authService.getCurrentUser();
+      dispatch({
+        type: "AUTH_SUCCESS",
+        payload: {
+          user: authState.user || profile.user, // Use existing user or fallback to profile user
+          profile: profile,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to refresh profile:", error);
+      // Don't logout on profile refresh failure, just log the error
+    }
+  }, [authState.user]);
+
   // Clear error function
   const clearError = useCallback(() => {
     dispatch({ type: "CLEAR_ERROR" });
@@ -234,6 +333,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isAdmin = authState.user?.role === Role.ADMIN;
   const isTeacher = authState.user?.role === Role.TEACHER;
   const isStudent = authState.user?.role === Role.STUDENT;
+  const isProfileComplete = authState.profile !== null;
 
   // Context value
   const contextValue: AuthContextType = {
@@ -242,7 +342,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     refreshToken,
     getCurrentUser,
+    refreshProfile,
     clearError,
+    user: authState.user,
+    profile: authState.profile,
+    isProfileComplete,
     isAdmin,
     isTeacher,
     isStudent,
@@ -285,19 +389,27 @@ export function withAuth<P extends object>(
     const router = useRouter();
 
     useEffect(() => {
+      // Only redirect to login if we're definitely not loading and not authenticated
       if (!authState.isLoading && !authState.isAuthenticated) {
-        router.push("/login");
+        const currentPath = window.location.pathname;
+        const redirectUrl = `/login?redirect=${encodeURIComponent(
+          currentPath
+        )}`;
+        router.push(redirectUrl);
       }
     }, [authState.isAuthenticated, authState.isLoading, router]);
 
+    // Show loading spinner while checking authentication
     if (authState.isLoading) {
       return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+          <span className="ml-4 text-gray-600">Checking authentication...</span>
         </div>
       );
     }
 
+    // Don't render anything if not authenticated (will redirect)
     if (!authState.isAuthenticated) {
       return null;
     }

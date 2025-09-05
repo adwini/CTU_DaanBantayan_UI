@@ -30,11 +30,12 @@ export interface TokenRequest {
 
 export interface ProfileRequest {
   firstName: string;
+  middleName?: string;
   lastName: string;
-  phoneNumber?: string;
-  address?: string;
-  dateOfBirth?: string;
-  role: Role;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  birthDate: string; // YYYY-MM-DD format
+  contactNumber: string;
+  address: string;
 }
 
 // Response DTOs
@@ -42,18 +43,20 @@ export interface UserResponse {
   id: string;
   email: string;
   role: Role;
-  createdAt: string;
-  updatedAt: string;
+  membershipCode?: string; // Added based on actual backend response
+  createdAt?: string; // Made optional
+  updatedAt?: string; // Made optional
 }
 
 export interface ProfileResponse {
   id: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
-  phoneNumber?: string;
-  address?: string;
-  dateOfBirth?: string;
-  role: Role;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  birthDate: string; // YYYY-MM-DD format
+  contactNumber: string;
+  address: string;
   user: UserResponse;
   createdAt: string;
   updatedAt: string;
@@ -82,7 +85,13 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   getCurrentUser: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   clearError: () => void;
+
+  // Convenience properties
+  user: UserResponse | null;
+  profile: ProfileResponse | null;
+  isProfileComplete: boolean;
 
   // Computed properties
   isAdmin: boolean;
