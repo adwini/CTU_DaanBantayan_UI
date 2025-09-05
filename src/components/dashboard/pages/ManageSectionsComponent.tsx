@@ -7,6 +7,10 @@ import {
   FilterOption,
   BaseItem,
 } from "../DataManagementTable";
+import { useEffect, useState } from "react";
+import { sectionsService } from "@/services/sections.service";
+import { profilesService } from "@/services/profiles.service";
+import { Section as ApiSection, Profile } from "@/types/api";
 
 // Section interface extending BaseItem
 interface Section extends BaseItem {
@@ -138,27 +142,163 @@ const getSectionBadgeColor = (key: string, value: unknown) => {
 };
 
 export function ManageSectionsComponent() {
-  const handleAddSection = (section: Omit<Section, "id" | "adviserName">) => {
-    // Find the adviser name based on adviserId
-    const adviser = availableAdvisers.find((a) => a.id === section.adviserId);
-    const newSection = {
-      ...section,
-      adviserName: adviser?.name || "Unknown Adviser",
+  const [sections, setSections] = useState<Section[]>([]);
+  const [advisers, setAdvisers] = useState<Array<{ id: string; name: string }>>(
+    []
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch sections and advisers on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Fetch sections and teachers in parallel
+        const [sectionsResponse, teachersResponse] = await Promise.all([
+          sectionsService.getAllSections(),
+          profilesService.getAllTeachers(),
+        ]);
+
+        // Transform API sections to component sections
+        const transformedSections: Section[] = sectionsResponse.map(
+          (apiSection) => ({
+            id: parseInt(apiSection.id) || Math.random(),
+            sectionName: apiSection.name,
+            gradeLevel: apiSection.gradeLevel,
+            adviserId: apiSection.id, // Using section ID as a placeholder
+            adviserName: apiSection.adviser,
+          })
+        );
+
+        // Transform teachers to adviser options
+        const adviserOptions = teachersResponse.map((teacher) => ({
+          id: teacher.id,
+          name: `${teacher.firstName} ${teacher.lastName}`,
+        }));
+
+        setSections(transformedSections);
+        setAdvisers(adviserOptions);
+      } catch (error) {
+        console.error("Failed to fetch sections data:", error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load sections data"
+        );
+      } finally {
+        setIsLoading(false);
+      }
     };
-    console.log("Add section:", newSection);
-    // Here you would typically make an API call to add the section
+
+    fetchData();
+  }, []);
+
+  const handleAddSection = async (
+    section: Omit<Section, "id" | "adviserName">
+  ) => {
+    try {
+      // Find the adviser name based on adviserId
+      const adviser = advisers.find((a) => a.id === section.adviserId);
+
+      const newSectionData = {
+        name: section.sectionName as string,
+        gradeLevel: section.gradeLevel as string,
+        adviser: adviser?.name || "Unknown Adviser",
+      };
+
+      const result = await sectionsService.createSection(newSectionData);
+      console.log("Section created:", result);
+
+      // Refresh the sections list
+      const updatedSections = await sectionsService.getAllSections();
+      const transformedSections: Section[] = updatedSections.map(
+        (apiSection) => ({
+          id: parseInt(apiSection.id) || Math.random(),
+          sectionName: apiSection.name,
+          gradeLevel: apiSection.gradeLevel,
+          adviserId: apiSection.id,
+          adviserName: apiSection.adviser,
+        })
+      );
+      setSections(transformedSections);
+    } catch (error) {
+      console.error("Failed to add section:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to add section"
+      );
+    }
   };
 
-  const handleEditSection = (id: number, sectionData: Partial<Section>) => {
-    // If adviserId is being updated, also update adviserName
-    if (sectionData.adviserId) {
-      const adviser = availableAdvisers.find(
-        (a) => a.id === sectionData.adviserId
+  const handleEditSection = async (
+    id: number,
+    sectionData: Partial<Section>
+  ) => {
+    try {
+      // Find the current section
+      const currentSection = sections.find((s) => s.id === id);
+      if (!currentSection) return;
+
+      // Update adviser name if adviserId is being updated
+      let adviserName = currentSection.adviserName;
+      if (sectionData.adviserId) {
+        const adviser = advisers.find((a) => a.id === sectionData.adviserId);
+        adviserName = adviser?.name || "Unknown Adviser";
+      }
+
+      const updateData = {
+        id: currentSection.adviserId, // Using the stored adviserId as the actual section ID
+        name: sectionData.sectionName || currentSection.sectionName,
+        gradeLevel: sectionData.gradeLevel || currentSection.gradeLevel,
+        adviser: adviserName,
+        createdAt: new Date().toISOString().slice(0, 19),
+        updatedAt: new Date().toISOString().slice(0, 19),
+      };
+
+      const result = await sectionsService.updateSection(
+        currentSection.adviserId,
+        updateData
       );
-      sectionData.adviserName = adviser?.name || "Unknown Adviser";
+      console.log("Section updated:", result);
+
+      // Refresh the sections list
+      const updatedSections = await sectionsService.getAllSections();
+      const transformedSections: Section[] = updatedSections.map(
+        (apiSection) => ({
+          id: parseInt(apiSection.id) || Math.random(),
+          sectionName: apiSection.name,
+          gradeLevel: apiSection.gradeLevel,
+          adviserId: apiSection.id,
+          adviserName: apiSection.adviser,
+        })
+      );
+      setSections(transformedSections);
+    } catch (error) {
+      console.error("Failed to edit section:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to edit section"
+      );
     }
-    console.log("Edit section:", id, sectionData);
-    // Here you would typically make an API call to update the section
+  };
+
+  const handleDeleteSection = async (id: number) => {
+    try {
+      const section = sections.find((s) => s.id === id);
+      if (!section) return;
+
+      await sectionsService.deleteSection(section.adviserId);
+      console.log("Section deleted:", id);
+
+      // Remove from local state
+      setSections(sections.filter((s) => s.id !== id));
+    } catch (error) {
+      console.error("Failed to delete section:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to delete section"
+      );
+    }
   };
 
   const handleViewSection = (id: number) => {
@@ -166,16 +306,75 @@ export function ManageSectionsComponent() {
     // Here you would typically navigate to a section details page or open a modal
   };
 
+  // Update form fields with real adviser data
+  const updatedFormFields: FormField[] = [
+    {
+      key: "sectionName",
+      label: "Section Name",
+      type: "text",
+      required: true,
+      placeholder: "e.g., Grade 7-A",
+    },
+    {
+      key: "gradeLevel",
+      label: "Grade Level",
+      type: "select",
+      required: true,
+      options: gradeLevels.map((grade) => ({
+        label: `Grade ${grade}`,
+        value: grade,
+      })),
+    },
+    {
+      key: "adviserId",
+      label: "Adviser",
+      type: "select",
+      required: true,
+      options: advisers.map((adviser) => ({
+        label: adviser.name,
+        value: adviser.id,
+      })),
+    },
+  ];
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+        <span className="ml-2 text-gray-600">Loading sections data...</span>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error loading sections data</p>
+          <p className="text-gray-600">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DataManagementTable
       title="Manage Sections"
       description="Add, edit, and manage class sections and their advisers."
-      data={sampleSections}
+      data={sections}
       columns={sectionColumns}
-      formFields={sectionFormFields}
+      formFields={updatedFormFields}
       filterOptions={sectionFilterOptions}
       onAdd={handleAddSection}
       onEdit={handleEditSection}
+      onDelete={handleDeleteSection}
       searchPlaceholder="Search sections..."
       addButtonText="Add Section"
       editModalTitle="Edit Section"
@@ -186,7 +385,7 @@ export function ManageSectionsComponent() {
       actions={{
         edit: true,
         statusToggle: false,
-        delete: false,
+        delete: true,
       }}
     />
   );

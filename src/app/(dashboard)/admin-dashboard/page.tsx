@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AppSidebar, NavigationItem } from "@/components/dashboard/app-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { AdminRoute } from "@/components/auth/protected-route";
 import { DashboardHomeComponent } from "@/components/dashboard/pages/DashboardHomeComponent";
 import { ManageUsersComponent as ManageUsersReusable } from "@/components/dashboard/pages/ManageUsersComponentReusable";
 import { ManageSectionsComponent } from "@/components/dashboard/pages/ManageSectionsComponent";
@@ -49,7 +50,7 @@ export default function Page() {
   };
 
   return (
-    <>
+    <AdminRoute>
       <SidebarProvider
         style={
           {
@@ -67,6 +68,6 @@ export default function Page() {
           <div className="flex flex-1 flex-col">{renderContent()}</div>
         </SidebarInset>
       </SidebarProvider>
-    </>
+    </AdminRoute>
   );
 }

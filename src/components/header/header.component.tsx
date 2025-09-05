@@ -3,22 +3,16 @@ import React, { JSX, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth.context";
 import AboutModal from "../modal/about-modal.component";
 import ContactModal from "../modal/contact-modal.component";
 import HelpModal from "../modal/help-modal.component";
 import { MotionCard, MotionHoverText } from "../utils/motion-wrapper";
 
-type User = {
-  role?: string;
-  studentId?: string;
-  email?: string;
-  [k: string]: unknown;
-};
-
 export default function Header(): JSX.Element {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
+  const { authState, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -73,24 +67,16 @@ export default function Header(): JSX.Element {
     };
   }, [dropdownOpen, mobileOpen]);
 
-  // Example: load user from localStorage safely
-  useEffect(() => {
+  const handleLogout = useCallback(async () => {
     try {
-      const raw = localStorage.getItem("saas-user");
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-      setUser(null);
+      await logout();
+      setDropdownOpen(false);
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Still close dropdown and redirect even if logout fails
+      setDropdownOpen(false);
     }
-  }, []);
-
-  const handleLogout = useCallback(() => {
-    try {
-      localStorage.removeItem("saas-user");
-    } catch {}
-    setUser(null);
-    setDropdownOpen(false);
-    router.push("/login");
-  }, [router]);
+  }, [logout]);
 
   return (
     <>
@@ -173,12 +159,14 @@ export default function Header(): JSX.Element {
 
             {/* Mobile toggle and dropdown */}
             <div className="flex items-center gap-3 mr-1.5">
-              {user && (
+              {authState.isAuthenticated && authState.user && (
                 <div className="relative" ref={menuRef}>
                   <button
                     onClick={() => setDropdownOpen((v) => !v)}
                     className="px-2 py-1 rounded-md hover:bg-muted/5">
-                    {user.email ? user.email.split("@")[0] : "Account"}
+                    {authState.user.email
+                      ? authState.user.email.split("@")[0]
+                      : "Account"}
                   </button>
                   {dropdownOpen && (
                     <ul className="absolute right-0 mt-2 w-44 bg-card border border-border rounded-md shadow-md overflow-hidden z-50 transform -translate-x-4 md:translate-x-0">
@@ -267,7 +255,7 @@ export default function Header(): JSX.Element {
                 Contact
               </button>
 
-              {!user && (
+              {!authState.isAuthenticated && (
                 <Link
                   href="/login"
                   onClick={() => setMobileOpen(false)}

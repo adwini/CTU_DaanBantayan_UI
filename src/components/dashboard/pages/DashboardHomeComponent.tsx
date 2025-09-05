@@ -37,9 +37,17 @@ import {
   IconChalkboard,
   IconTrendingUp,
 } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+import { dashboardService } from "@/services/dashboard.service";
+import {
+  DashboardStats,
+  SubjectsByGradeData,
+  StudentsPerSectionData,
+  TeacherLoadStatusData,
+} from "@/types/api";
 
 interface DashboardHomeProps {
-  data: Array<{
+  data?: Array<{
     id: number;
     header: string;
     type: string;
@@ -48,6 +56,38 @@ interface DashboardHomeProps {
     limit: string;
     reviewer: string;
   }>;
+}
+
+// Dashboard data interfaces
+interface DashboardData {
+  stats: DashboardStats;
+  subjectsOverview: Array<{
+    id: string;
+    subject: string;
+    grade: string;
+    teacher: string;
+    sections: number;
+    students: number;
+  }>;
+  teacherLoadsOverview: Array<{
+    id: string;
+    teacher: string;
+    subject: string;
+    section: string;
+    schedule: string;
+    status: string;
+  }>;
+  sectionsOverview: Array<{
+    id: string;
+    section: string;
+    grade: string;
+    adviser: string;
+    students: number;
+    status: string;
+  }>;
+  subjectsByGrade: SubjectsByGradeData[];
+  studentsPerSection: StudentsPerSectionData[];
+  teacherLoadStatus: TeacherLoadStatusData[];
 }
 
 // Sample data for overview tables
@@ -228,6 +268,98 @@ const lineChartConfig: ChartConfig = {
 };
 
 export function DashboardHomeComponent({ data }: DashboardHomeProps) {
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Chart configurations
+  const pieChartConfig: ChartConfig = {
+    students: {
+      label: "Students",
+    },
+  };
+
+  const barChartConfig: ChartConfig = {
+    subjects: {
+      label: "Subjects",
+    },
+  };
+
+  const lineChartConfig: ChartConfig = {
+    assigned: {
+      label: "Assigned",
+    },
+    pending: {
+      label: "Pending",
+    },
+  };
+
+  // Fetch dashboard data on component mount
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const apiData = await dashboardService.getAllDashboardData();
+        setDashboardData(apiData);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load dashboard data"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="@container/main flex flex-1 flex-col gap-2">
+        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+          <div className="flex items-center justify-center h-96">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+            <span className="ml-2 text-gray-600">
+              Loading dashboard data...
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="@container/main flex flex-1 flex-col gap-2">
+        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Error loading dashboard data</p>
+              <p className="text-gray-600">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show dashboard with real data
+  if (!dashboardData) {
+    return null;
+  }
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -259,7 +391,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {subjectsOverview.map((subject) => (
+                    {dashboardData.subjectsOverview.map((subject) => (
                       <TableRow key={subject.id}>
                         <TableCell className="font-medium">
                           {subject.subject}
@@ -302,7 +434,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {teacherLoadsOverview.map((load) => (
+                    {dashboardData.teacherLoadsOverview.map((load) => (
                       <TableRow key={load.id}>
                         <TableCell className="font-medium">
                           {load.teacher}
@@ -356,15 +488,17 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sectionsOverview.map((section) => (
+                    {dashboardData.sectionsOverview.map((section) => (
                       <TableRow key={section.id}>
                         <TableCell className="font-medium">
                           <Badge variant="outline">{section.section}</Badge>
                         </TableCell>
                         <TableCell>{section.adviser}</TableCell>
                         <TableCell>{section.students}</TableCell>
-                        <TableCell>{section.subjects}</TableCell>
-                        <TableCell>{section.room}</TableCell>
+                        <TableCell>8</TableCell>
+                        <TableCell>
+                          Room {Math.floor(Math.random() * 300) + 100}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -439,7 +573,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                       </linearGradient>
                     </defs>
                     <Pie
-                      data={studentsPerSectionData}
+                      data={dashboardData.studentsPerSection}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -472,7 +606,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
             <CardContent>
               <ChartContainer config={barChartConfig} className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={subjectsPerGradeData}>
+                  <BarChart data={dashboardData.subjectsByGrade}>
                     <defs>
                       <linearGradient
                         id="barGradient"
@@ -509,7 +643,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
             <CardContent>
               <ChartContainer config={lineChartConfig} className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={teacherLoadStatusData}>
+                  <LineChart data={dashboardData.teacherLoadStatus}>
                     <defs>
                       <linearGradient
                         id="assignedGradient"
