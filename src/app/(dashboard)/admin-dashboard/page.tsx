@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AdminRoute } from "@/components/auth/protected-route";
 import { DashboardHomeComponent } from "@/components/dashboard/pages/DashboardHomeComponent";
-import { ManageUsersComponent as ManageUsersReusable } from "@/components/dashboard/pages/ManageUsersComponentReusable";
+import { ManageUsersComponent as ManageUsersReusable } from "@/components/dashboard/pages/ManageUsersComponent";
 import { ManageSectionsComponent } from "@/components/dashboard/pages/ManageSectionsComponent";
 import { ManageSubjectsComponent } from "@/components/dashboard/pages/ManageSubjectsComponent";
 import { TeacherLoadsComponent } from "@/components/dashboard/pages/TeacherLoadsComponent";

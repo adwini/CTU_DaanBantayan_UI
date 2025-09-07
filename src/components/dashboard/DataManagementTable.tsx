@@ -29,7 +29,13 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { TimePicker, DateTimePicker } from "@/components/ui/datetime-picker";
-import { IconPlus, IconSearch, IconDots, IconX } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconSearch,
+  IconDots,
+  IconX,
+  IconRefresh,
+} from "@tabler/icons-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,6 +87,7 @@ export interface DataManagementTableProps {
   onEdit?: (id: number, item: Partial<BaseItem>) => void;
   onDelete?: (id: number) => void;
   onStatusToggle?: (id: number) => void;
+  onRefresh?: () => void | Promise<void>;
   searchPlaceholder?: string;
   addButtonText?: string;
   editModalTitle?: string;
@@ -106,6 +113,7 @@ export function DataManagementTable({
   onEdit,
   onDelete,
   onStatusToggle,
+  onRefresh,
   searchPlaceholder = "Search...",
   addButtonText = "Add Item",
   editModalTitle = "Edit Item",
@@ -122,6 +130,7 @@ export function DataManagementTable({
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingItem, setEditingItem] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -265,6 +274,19 @@ export function DataManagementTable({
 
   const clearAllFilters = () => {
     setFilters({});
+  };
+
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      try {
+        await onRefresh();
+      } catch (error) {
+        console.error("Error refreshing data:", error);
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
   };
 
   const hasActiveFilters = Object.values(filters).some(
@@ -514,6 +536,23 @@ export function DataManagementTable({
                   onClick={clearAllFilters}
                   className="text-sm">
                   Clear All Filters
+                </Button>
+              )}
+
+              {/* Refresh Button */}
+              {onRefresh && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="text-sm">
+                  <IconRefresh
+                    className={`h-4 w-4 mr-2 ${
+                      isRefreshing ? "animate-spin" : ""
+                    }`}
+                  />
+                  {isRefreshing ? "Refreshing..." : "Refresh"}
                 </Button>
               )}
 

@@ -92,18 +92,20 @@ export default function ProfileCompletionModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <CardTitle>Complete Your Profile</CardTitle>
-          <CardDescription>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <Card className="w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-2 sm:mx-4">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg sm:text-xl">
+            Complete Your Profile
+          </CardTitle>
+          <CardDescription className="text-sm sm:text-base">
             Before you can access the system, please complete your profile
             information. This information is required for all users.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="px-4 sm:px-6">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name *</Label>
                 <Input
@@ -116,6 +118,7 @@ export default function ProfileCompletionModal({
                   placeholder="Enter your first name"
                   required
                   disabled={loading}
+                  className="text-sm sm:text-base"
                 />
               </div>
 
@@ -131,6 +134,7 @@ export default function ProfileCompletionModal({
                   placeholder="Enter your last name"
                   required
                   disabled={loading}
+                  className="text-sm sm:text-base"
                 />
               </div>
             </div>
@@ -147,6 +151,7 @@ export default function ProfileCompletionModal({
                 placeholder="Enter your phone number"
                 required
                 disabled={loading}
+                className="text-sm sm:text-base"
               />
             </div>
 
@@ -160,10 +165,11 @@ export default function ProfileCompletionModal({
                 placeholder="Enter your address"
                 required
                 disabled={loading}
+                className="text-sm sm:text-base"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="birthDate">Date of Birth *</Label>
                 <Input
@@ -175,6 +181,7 @@ export default function ProfileCompletionModal({
                   }
                   required
                   disabled={loading}
+                  className="text-sm sm:text-base"
                 />
               </div>
 
@@ -186,7 +193,7 @@ export default function ProfileCompletionModal({
                     handleInputChange("gender", value as Gender)
                   }
                   disabled={loading}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-sm sm:text-base">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
@@ -198,11 +205,11 @@ export default function ProfileCompletionModal({
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex justify-end space-x-2 pt-4 pb-2">
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full md:w-auto">
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base">
                 {loading ? "Creating Profile..." : "Complete Profile"}
               </Button>
             </div>

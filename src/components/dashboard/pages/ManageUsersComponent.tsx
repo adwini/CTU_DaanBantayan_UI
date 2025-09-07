@@ -1,559 +1,339 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { IconPlus, IconSearch, IconDots } from "@tabler/icons-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DataManagementTable,
+  TableColumn,
+  FormField,
+  FilterOption,
+  BaseItem,
+} from "../DataManagementTable";
+import { usersService } from "@/services/users.service";
+import { profilesService } from "@/services/profiles.service";
+import { Profile } from "@/types/api";
+import { Role } from "@/types/auth";
+import { Gender } from "@/types/api";
 
-// Sample data - replace with real data from your backend
-const sampleUsers = [
+// User interface extending BaseItem - Simple setup as originally specified
+interface User extends BaseItem {
+  name: string;
+  email: string;
+  role: string;
+}
+
+// Sample data (will be replaced by API data)
+const sampleUsers: User[] = [];
+
+const roles = ["ADMIN", "TEACHER", "STUDENT"];
+const genders = ["MALE", "FEMALE", "OTHER"];
+
+// Table columns configuration
+const userColumns: TableColumn[] = [
+  { key: "name", label: "Name", searchable: true },
+  { key: "email", label: "Email", searchable: true },
+  { key: "role", label: "Role" },
+  { key: "status", label: "Status" },
+];
+
+// Form fields configuration - Simple 3-field setup as originally specified
+const userFormFields: FormField[] = [
   {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@school.edu",
-    role: "Teacher",
-    studentId: "",
-    section: "Science Dept",
-    gradeLevel: "",
-    status: "active",
+    key: "name",
+    label: "Name",
+    type: "text",
+    required: true,
   },
   {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane.smith@school.edu",
-    role: "Student",
-    studentId: "2024001",
-    section: "Grade 10-A",
-    gradeLevel: "10",
-    status: "active",
+    key: "email",
+    label: "Email",
+    type: "email",
+    required: true,
   },
   {
-    id: 3,
-    name: "Admin User",
-    email: "admin@school.edu",
-    role: "Admin",
-    studentId: "",
-    section: "",
-    gradeLevel: "",
-    status: "active",
-  },
-  {
-    id: 4,
-    name: "Mary Johnson",
-    email: "mary.johnson@school.edu",
-    role: "Student",
-    studentId: "",
-    section: "Grade 9-B",
-    gradeLevel: "9",
-    status: "inactive",
+    key: "role",
+    label: "Role",
+    type: "select",
+    required: true,
+    options: roles,
   },
 ];
 
-const roles = ["Admin", "Teacher", "Student"];
-const gradeLevels = ["7", "8", "9", "10", "11", "12"];
-const sections = [
-  "Grade 7-A",
-  "Grade 7-B",
-  "Grade 8-A",
-  "Grade 8-B",
-  "Grade 9-A",
-  "Grade 9-B",
-  "Grade 10-A",
-  "Grade 10-B",
+// Filter options configuration
+const userFilterOptions: FilterOption[] = [
+  { key: "role", label: "Roles", options: roles },
 ];
 
-export function ManageUsersComponent() {
-  const [users, setUsers] = useState(sampleUsers);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState("All");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editingUser, setEditingUser] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    role: "",
-    studentId: "",
-    section: "",
-    gradeLevel: "",
-  });
-
-  const nameInputRef = useRef<HTMLInputElement>(null);
-
-  // Prevent auto-selection when modal opens in edit mode
-  useEffect(() => {
-    if (isModalOpen && isEditMode && nameInputRef.current) {
-      // Small delay to ensure the modal is fully rendered
-      const timeoutId = setTimeout(() => {
-        if (nameInputRef.current) {
-          nameInputRef.current.blur(); // Remove focus
-          // If you want to completely prevent any selection, you can also do:
-          nameInputRef.current.setSelectionRange(0, 0);
-        }
-      }, 100);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isModalOpen, isEditMode]);
-
-  // Filter users based on search term and role filter
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.studentId.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesRole = filterRole === "All" || user.role === filterRole;
-
-    return matchesSearch && matchesRole;
-  });
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (isEditMode && editingUser !== null) {
-      // Update existing user
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === editingUser ? { ...user, ...formData } : user
-        )
-      );
-    } else {
-      // Add new user to the list
-      const newUser = {
-        id: users.length + 1,
-        ...formData,
-        status: "active", // New users are active by default
-      };
-      setUsers((prev) => [...prev, newUser]);
-    }
-
-    // Reset form and close modal
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      email: "",
-      role: "",
-      studentId: "",
-      section: "",
-      gradeLevel: "",
-    });
-    setIsModalOpen(false);
-    setIsEditMode(false);
-    setEditingUser(null);
-  };
-
-  const handleAddUser = () => {
-    // Reset form to ensure clean state for adding new user
-    setFormData({
-      name: "",
-      email: "",
-      role: "",
-      studentId: "",
-      section: "",
-      gradeLevel: "",
-    });
-    setIsEditMode(false);
-    setEditingUser(null);
-    setIsModalOpen(true);
-  };
-
-  const handleModalClose = (open: boolean) => {
-    if (!open) {
-      // Modal is being closed - reset form
-      resetForm();
-    } else {
-      setIsModalOpen(open);
-    }
-  };
-
-  const handleEditUser = (userId: number) => {
-    const userToEdit = users.find((user) => user.id === userId);
-    if (userToEdit) {
-      // Pre-fill the form with existing user data
-      setFormData({
-        name: userToEdit.name,
-        email: userToEdit.email,
-        role: userToEdit.role,
-        studentId: userToEdit.studentId,
-        section: userToEdit.section,
-        gradeLevel: userToEdit.gradeLevel,
-      });
-      setIsEditMode(true);
-      setEditingUser(userId);
-      setIsModalOpen(true);
-    }
-  };
-
-  const handleDeactivateUser = (userId: number) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === userId
-          ? {
-              ...user,
-              status: user.status === "active" ? "inactive" : "active",
-            }
-          : user
-      )
-    );
-    console.log("Toggled user status:", userId);
-  };
-
-  const handleRemoveUser = (userId: number) => {
-    // Remove user from the list
-    setUsers((prev) => prev.filter((user) => user.id !== userId));
-    console.log("Remove user:", userId);
-  };
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "Admin":
+// Badge color function
+const getUserBadgeColor = (key: string, value: unknown) => {
+  if (key === "role") {
+    switch (value) {
+      case "ADMIN":
         return "bg-red-100 text-red-800";
-      case "Teacher":
+      case "TEACHER":
         return "bg-blue-100 text-blue-800";
-      case "Student":
+      case "STUDENT":
         return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
+  }
+  if (key === "status") {
+    switch (value) {
       case "active":
         return "bg-green-100 text-green-800";
+      case "pending_profile":
+        return "bg-yellow-100 text-yellow-800";
       case "inactive":
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
+  }
+  return "bg-gray-100 text-gray-800";
+};
+
+export function ManageUsersComponent() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load users on component mount
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Use the proper getAllUsers method instead of profilesService
+      const response = await usersService.getAllUsers({ size: 100 });
+      console.log("📊 Raw API Response:", JSON.stringify(response, null, 2));
+
+      // Check if response has the expected structure
+      if (!response || !response.content || !Array.isArray(response.content)) {
+        throw new Error("Invalid response structure from API");
+      }
+
+      console.log("📊 Number of users:", response.content.length);
+
+      // Transform all users (whether they have profiles or not)
+      const transformedUsers: User[] = response.content.map(
+        (profile: Profile) => {
+          // Check if user has profile data
+          const hasProfile = profile.firstName && profile.lastName;
+          const displayName = hasProfile
+            ? `${profile.firstName} ${profile.lastName}`
+            : profile.user?.email || "No Name";
+
+          console.log(`📊 User:`, {
+            id: profile?.id,
+            email: profile?.user?.email,
+            role: profile?.user?.role,
+            hasProfile: hasProfile,
+            displayName: displayName,
+          });
+
+          return {
+            id: parseInt(profile.id),
+            name: displayName,
+            email: profile.user?.email || "",
+            role: profile.user?.role || "",
+            status: hasProfile ? "active" : "pending_profile",
+          };
+        }
+      );
+
+      console.log("📊 Final transformed users:", transformedUsers);
+      setUsers(transformedUsers);
+    } catch (err) {
+      console.error("❌ Failed to load users - full error:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load users";
+      setError(errorMessage);
+      console.error("Failed to load users:", err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleAddUser = async (user: Omit<User, "id">) => {
+    try {
+      setError(null);
+
+      // Create user account only with default password
+      const newUser = await usersService.createUser({
+        email: user.email as string,
+        password: "password123", // Default password as specified
+        role: user.role as Role,
+      });
+
+      console.log("User created successfully:", newUser);
+
+      // Note: Profile will be created when user logs in for the first time
+      // through the profile guard popup
+
+      // Reload users to get the updated list
+      await loadUsers();
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to add user";
+      setError(errorMessage);
+      console.error("Failed to add user:", err);
+      throw new Error(errorMessage);
+    }
+  };
+
+  const handleEditUser = async (id: number, userData: Partial<User>) => {
+    try {
+      setError(null);
+
+      const user = users.find((u) => u.id === id);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Extract first and last name from the full name
+      const nameParts = userData.name
+        ? userData.name.split(" ")
+        : user.name.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      // Update user profile
+      await usersService.updateUser(user.id.toString(), {
+        firstName: firstName,
+        middleName: "",
+        lastName: lastName,
+        gender: Gender.OTHER,
+        birthDate: new Date().toISOString().split("T")[0],
+        contactNumber: "",
+        address: "",
+      });
+
+      console.log("User updated successfully:", id, userData);
+
+      // Reload users to get the updated list
+      await loadUsers();
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to edit user";
+      setError(errorMessage);
+      console.error("Failed to edit user:", err);
+      throw new Error(errorMessage);
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    try {
+      setError(null);
+
+      const user = users.find((u) => u.id === id);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      await usersService.deleteUser(user.id.toString());
+
+      console.log("User deleted successfully:", id);
+
+      // Reload users to get the updated list
+      await loadUsers();
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete user";
+      setError(errorMessage);
+      console.error("Failed to delete user:", err);
+      throw new Error(errorMessage);
+    }
+  };
+
+  const handleToggleUserStatus = async (id: number) => {
+    try {
+      setError(null);
+
+      const user = users.find((u) => u.id === id);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      await usersService.toggleUserStatus(user.id.toString());
+
+      console.log("User status toggled successfully:", id);
+
+      // Reload users to get the updated list
+      await loadUsers();
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to toggle user status";
+      setError(errorMessage);
+      console.error("Failed to toggle user status:", err);
+      // Don't throw here since this feature might not be implemented in backend yet
+    }
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+        <span className="ml-4 text-gray-600">Loading users...</span>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error && users.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="text-red-600 text-lg font-semibold">
+          Failed to load users
+        </div>
+        <div className="text-gray-600">{error}</div>
+        <button
+          onClick={loadUsers}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="h-6" />
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="bg-card text-card-foreground rounded-xl border shadow-sm">
-          <div className="p-6">
-            <div className="space-y-1.5">
-              <h2 className="text-2xl font-semibold leading-none tracking-tight">
-                Manage Users
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Add, edit, and manage system users including students and
-                teachers.
-              </p>
-            </div>
-          </div>
-          <div className="p-6 pt-0">
-            {/* Search and Filter Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
-                <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterRole} onValueChange={setFilterRole}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Roles</SelectItem>
-                  {roles.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Add User Button */}
-              <Dialog open={isModalOpen} onOpenChange={handleModalClose}>
-                <DialogTrigger asChild>
-                  <Button onClick={handleAddUser}>
-                    <IconPlus className="h-4 w-4 mr-2" />
-                    Add User
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {isEditMode ? "Edit User" : "Add New User"}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {isEditMode
-                        ? "Update the user details below."
-                        : "Fill in the details to create a new user account."}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Name *</Label>
-                        <Input
-                          ref={nameInputRef}
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) =>
-                            handleInputChange("name", e.target.value)
-                          }
-                          autoFocus={false}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email *</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) =>
-                            handleInputChange("email", e.target.value)
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role *</Label>
-                      <Select
-                        value={formData.role}
-                        onValueChange={(value) =>
-                          handleInputChange("role", value)
-                        }>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roles.map((role) => (
-                            <SelectItem key={role} value={role}>
-                              {role}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {formData.role === "Student" && (
-                      <>
-                        <div className="space-y-2">
-                          <Label htmlFor="studentId">Student ID *</Label>
-                          <Input
-                            id="studentId"
-                            value={formData.studentId}
-                            onChange={(e) =>
-                              handleInputChange("studentId", e.target.value)
-                            }
-                            placeholder="e.g., 2024001"
-                            required
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="section">Section</Label>
-                            <Select
-                              value={formData.section}
-                              onValueChange={(value) =>
-                                handleInputChange("section", value)
-                              }>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select section" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {sections.map((section) => (
-                                  <SelectItem key={section} value={section}>
-                                    {section}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="gradeLevel">Grade Level</Label>
-                            <Select
-                              value={formData.gradeLevel}
-                              onValueChange={(value) =>
-                                handleInputChange("gradeLevel", value)
-                              }>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select grade" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {gradeLevels.map((grade) => (
-                                  <SelectItem key={grade} value={grade}>
-                                    Grade {grade}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    {formData.role === "Teacher" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="section">Department/Section</Label>
-                        <Input
-                          id="section"
-                          value={formData.section}
-                          onChange={(e) =>
-                            handleInputChange("section", e.target.value)
-                          }
-                          placeholder="e.g., Science Department"
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex justify-end space-x-2 pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => resetForm()}>
-                        Cancel
-                      </Button>
-                      <Button type="submit">
-                        {isEditMode ? "Update User" : "Add User"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {/* Users Table */}
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="text-center py-8 text-gray-500">
-                        No users found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">
-                          {user.name}
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Badge className={getRoleBadgeColor(user.role)}>
-                            {user.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusBadgeColor(user.status)}>
-                            {user.status.charAt(0).toUpperCase() +
-                              user.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0">
-                                <IconDots className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-32">
-                              <DropdownMenuItem
-                                onClick={() => handleEditUser(user.id)}>
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeactivateUser(user.id)}>
-                                {user.status === "active"
-                                  ? "Deactivate"
-                                  : "Activate"}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => handleRemoveUser(user.id)}>
-                                Remove
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Results Summary */}
-            <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
-              <span>
-                Showing {filteredUsers.length} of {users.length} users
-              </span>
-              <span>
-                {filterRole !== "All" && `Filtered by: ${filterRole}`}
-              </span>
-            </div>
-          </div>
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="text-red-800 font-medium">Error</div>
+          <div className="text-red-600 text-sm">{error}</div>
         </div>
-      </div>
+      )}
+
+      <DataManagementTable
+        title="Manage Users"
+        description="Add, edit, and manage system users including students, teachers, and admins."
+        data={users}
+        columns={userColumns}
+        formFields={userFormFields}
+        filterOptions={userFilterOptions}
+        onAdd={handleAddUser}
+        onEdit={handleEditUser}
+        onDelete={handleDeleteUser}
+        onStatusToggle={handleToggleUserStatus}
+        onRefresh={loadUsers}
+        searchPlaceholder="Search users..."
+        addButtonText="Add User"
+        editModalTitle="Edit User"
+        addModalTitle="Add New User"
+        editModalDescription="Update the user details below."
+        addModalDescription="Fill in the details to create a new user account."
+        getBadgeColor={getUserBadgeColor}
+        actions={{
+          edit: true,
+          statusToggle: true,
+          delete: true,
+        }}
+      />
     </>
   );
 }

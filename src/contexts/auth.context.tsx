@@ -3,6 +3,13 @@
 /**
  * Authentication Context Provider
  * Manages global authentication state and provides auth methods to the entire app
+ *
+ * Features:
+ * - JWT cookie-based authentication
+ * - Persistent state management
+ * - Role-based access control
+ * - Profile management integration
+ * - Automatic token refresh
  */
 
 import React, {
@@ -23,27 +30,11 @@ import {
   Role,
 } from "@/types/auth";
 
-// Initial state
-const getInitialState = (): AuthState => {
-  // Try to restore state from localStorage if available
-  if (typeof window !== "undefined") {
-    try {
-      const savedState = localStorage.getItem("auth_state");
-      console.log("🔍 Restoring auth state from localStorage:", savedState);
-      if (savedState) {
-        const parsed = JSON.parse(savedState);
-        console.log("✅ Parsed saved state:", parsed);
-        return {
-          ...parsed,
-          isLoading: true, // Always start with loading to verify auth
-        };
-      }
-    } catch (error) {
-      console.warn("Failed to restore auth state from localStorage:", error);
-    }
-  }
+// Storage key for persisting auth state
+const AUTH_STORAGE_KEY = "ctu_auth_state";
 
-  console.log("🔄 Using default initial state");
+// Initial state - always return consistent state for SSR
+const getInitialState = (): AuthState => {
   return {
     isAuthenticated: false,
     isLoading: true,
@@ -55,104 +46,139 @@ const getInitialState = (): AuthState => {
 
 const initialState: AuthState = getInitialState();
 
-// Action types
+// Action types for auth state management
 type AuthAction =
-  | { type: "AUTH_START" }
+  | { type: "INIT_AUTH" }
+  | { type: "LOGIN_START" }
   | {
-      type: "AUTH_SUCCESS";
+      type: "LOGIN_SUCCESS";
       payload: { user: UserResponse; profile: ProfileResponse | null };
     }
-  | { type: "AUTH_FAILURE"; payload: string }
-  | { type: "AUTH_LOGOUT" }
+  | { type: "LOGIN_FAILURE"; payload: string }
+  | { type: "LOGOUT" }
+  | { type: "PROFILE_UPDATE"; payload: ProfileResponse }
   | { type: "CLEAR_ERROR" }
-  | { type: "SET_LOADING"; payload: boolean };
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "RESTORE_FROM_STORAGE"; payload: Partial<AuthState> };
 
-// Reducer function
+// Reducer function with improved state management
 function authReducer(state: AuthState, action: AuthAction): AuthState {
-  let newState: AuthState;
-
   switch (action.type) {
-    case "AUTH_START":
-      newState = {
+    case "INIT_AUTH":
+      return {
         ...state,
         isLoading: true,
         error: null,
       };
-      break;
 
-    case "AUTH_SUCCESS":
-      newState = {
+    case "LOGIN_START":
+      return {
         ...state,
+        isLoading: true,
+        error: null,
+      };
+
+    case "LOGIN_SUCCESS":
+      const newState = {
         isAuthenticated: true,
         isLoading: false,
         user: action.payload.user,
         profile: action.payload.profile,
         error: null,
       };
-      break;
 
-    case "AUTH_FAILURE":
-      newState = {
-        ...state,
+      // Persist to localStorage
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(
+            AUTH_STORAGE_KEY,
+            JSON.stringify({
+              isAuthenticated: true,
+              user: action.payload.user,
+              profile: action.payload.profile,
+            })
+          );
+        } catch (error) {
+          console.warn("Failed to persist auth state:", error);
+        }
+      }
+
+      return newState;
+
+    case "LOGIN_FAILURE":
+      // Clear storage on login failure
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+
+      return {
         isAuthenticated: false,
         isLoading: false,
         user: null,
         profile: null,
         error: action.payload,
       };
-      break;
 
-    case "AUTH_LOGOUT":
-      newState = {
+    case "LOGOUT":
+      // Clear storage on logout
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+
+      return {
         isAuthenticated: false,
         isLoading: false,
         user: null,
         profile: null,
         error: null,
       };
-      break;
+
+    case "PROFILE_UPDATE":
+      const updatedState = {
+        ...state,
+        profile: action.payload,
+      };
+
+      // Update storage with new profile
+      if (typeof window !== "undefined" && state.isAuthenticated) {
+        try {
+          localStorage.setItem(
+            AUTH_STORAGE_KEY,
+            JSON.stringify({
+              isAuthenticated: true,
+              user: state.user,
+              profile: action.payload,
+            })
+          );
+        } catch (error) {
+          console.warn("Failed to persist profile update:", error);
+        }
+      }
+
+      return updatedState;
 
     case "CLEAR_ERROR":
-      newState = {
+      return {
         ...state,
         error: null,
       };
-      break;
 
     case "SET_LOADING":
-      newState = {
+      return {
         ...state,
         isLoading: action.payload,
       };
-      break;
+
+    case "RESTORE_FROM_STORAGE":
+      return {
+        ...state,
+        ...action.payload,
+        isLoading: true, // Keep loading true until auth verification
+      };
 
     default:
-      newState = state;
+      return state;
   }
-
-  // Save to localStorage (except during SSR)
-  if (typeof window !== "undefined" && newState !== state) {
-    try {
-      if (newState.isAuthenticated) {
-        const stateToSave = {
-          isAuthenticated: newState.isAuthenticated,
-          user: newState.user,
-          profile: newState.profile,
-          isLoading: false,
-          error: null,
-        };
-        console.log("💾 Saving auth state to localStorage:", stateToSave);
-        localStorage.setItem("auth_state", JSON.stringify(stateToSave));
-      } else {
-        console.log("🗑️ Removing auth state from localStorage");
-        localStorage.removeItem("auth_state");
-      }
-    } catch (error) {
-      console.warn("Failed to save auth state to localStorage:", error);
-    }
-  }
-
-  return newState;
 }
 
 // Create the context
@@ -168,47 +194,151 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [authState, dispatch] = useReducer(authReducer, initialState);
   const router = useRouter();
 
-  // Check authentication status on app load
+  // Initialize auth state on component mount
   useEffect(() => {
-    checkAuthStatus();
+    initializeAuth();
   }, []);
 
-  // Check authentication status
-  const checkAuthStatus = useCallback(async () => {
-    try {
-      console.log("🔍 Context: Starting auth check...");
-      dispatch({ type: "AUTH_START" });
+  // Initialize authentication state
+  const initializeAuth = useCallback(async () => {
+    dispatch({ type: "INIT_AUTH" });
 
-      // First try to get the profile (which includes user info)
+    // Restore from localStorage if available (client-side only)
+    if (typeof window !== "undefined") {
+      try {
+        const savedState = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (savedState) {
+          const parsed = JSON.parse(savedState);
+          console.log("🔄 Restoring auth state from localStorage:", parsed);
+
+          // If we have valid cached auth data, use it immediately
+          if (parsed.isAuthenticated && parsed.user) {
+            console.log("✅ Using cached auth state, attempting verification");
+            dispatch({
+              type: "LOGIN_SUCCESS",
+              payload: {
+                user: parsed.user,
+                profile: parsed.profile || null,
+              },
+            });
+
+            // Try to verify in background - if it fails, keep cached state but warn user
+            try {
+              const authStatus = await authService.checkAuthStatus();
+              if (authStatus.isAuthenticated && authStatus.user) {
+                console.log("✅ Background verification successful");
+                dispatch({
+                  type: "LOGIN_SUCCESS",
+                  payload: {
+                    user: authStatus.user,
+                    profile: authStatus.profile || null,
+                  },
+                });
+              } else {
+                console.log(
+                  "⚠️ Session may be expired, but keeping cached state"
+                );
+              }
+            } catch (error) {
+              console.log(
+                "⚠️ Background verification failed, but keeping cached state"
+              );
+              // Don't logout - keep the cached state active
+            }
+            return;
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to restore auth state from localStorage:", error);
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    }
+
+    // If no cached data, just finish loading without auth verification
+    // Let the app show the landing page or redirect to login naturally
+    dispatch({ type: "SET_LOADING", payload: false });
+  }, []);
+
+  // Background auth verification that doesn't affect UI
+  const verifyAuthStatusInBackground = useCallback(async () => {
+    try {
+      console.log("🔍 Background auth verification...");
       const authStatus = await authService.checkAuthStatus();
-      console.log("📊 Context: Auth status response:", authStatus);
 
       if (authStatus.isAuthenticated && authStatus.user) {
-        console.log(
-          "✅ Context: User is authenticated, dispatching AUTH_SUCCESS"
-        );
+        console.log("✅ Background verification successful, updating state");
         dispatch({
-          type: "AUTH_SUCCESS",
+          type: "LOGIN_SUCCESS",
           payload: {
             user: authStatus.user,
             profile: authStatus.profile || null,
           },
         });
       } else {
-        console.log("❌ Context: User not authenticated, clearing state");
-        // Clear localStorage and set to logged out
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("auth_state");
-        }
-        dispatch({ type: "AUTH_LOGOUT" });
+        console.log("⚠️ Background verification failed, keeping cached state");
+        // Don't logout in background verification
       }
     } catch (error) {
-      console.warn("❌ Context: Auth check failed:", error);
-      // Clear localStorage and set to logged out
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_state");
+      console.log(
+        "⚠️ Background auth verification failed, keeping cached state"
+      );
+      // Don't logout in background verification
+    }
+  }, []);
+
+  // Verify authentication status with the server
+  const verifyAuthStatus = useCallback(async () => {
+    try {
+      console.log("🔍 Verifying auth status with server...");
+
+      const authStatus = await authService.checkAuthStatus();
+      console.log("📊 Auth status response:", authStatus);
+
+      if (authStatus.isAuthenticated && authStatus.user) {
+        console.log("✅ User is authenticated");
+        dispatch({
+          type: "LOGIN_SUCCESS",
+          payload: {
+            user: authStatus.user,
+            profile: authStatus.profile || null,
+          },
+        });
+      } else {
+        console.log("❌ User not authenticated, clearing state");
+        dispatch({ type: "LOGOUT" });
       }
-      dispatch({ type: "AUTH_LOGOUT" });
+    } catch (error) {
+      console.warn("❌ Auth verification failed:", error);
+
+      // 🔧 FIX: Don't logout immediately on verification failure
+      // Check if we have valid cached data from localStorage
+      if (typeof window !== "undefined") {
+        try {
+          const savedState = localStorage.getItem(AUTH_STORAGE_KEY);
+          if (savedState) {
+            const parsed = JSON.parse(savedState);
+            if (parsed.isAuthenticated && parsed.user) {
+              console.log(
+                "🔄 Auth verification failed, but using cached state"
+              );
+              dispatch({
+                type: "LOGIN_SUCCESS",
+                payload: {
+                  user: parsed.user,
+                  profile: parsed.profile || null,
+                },
+              });
+              return; // Don't logout, use cached data
+            }
+          }
+        } catch (storageError) {
+          console.warn("Failed to read cached auth state:", storageError);
+        }
+      }
+
+      // Only logout if no valid cached data exists
+      console.log("❌ No valid cached auth state, logging out");
+      dispatch({ type: "LOGOUT" });
     }
   }, []);
 
@@ -216,39 +346,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = useCallback(
     async (credentials: LoginRequest) => {
       try {
-        dispatch({ type: "AUTH_START" });
+        dispatch({ type: "LOGIN_START" });
 
+        console.log("🔐 Starting login process...");
         const loginResponse = await authService.login(credentials);
+        console.log("✅ Login successful:", loginResponse);
 
         // Try to get current user profile after successful login
-        // Make this optional - some users (like admins) might not have profiles
         let profile: ProfileResponse | null = null;
         try {
           profile = await authService.getCurrentUser();
+          console.log("📱 Profile fetched:", profile);
         } catch (profileError) {
-          console.warn("Could not fetch user profile:", profileError);
+          console.warn(
+            "⚠️ Could not fetch user profile (user may need to create one):",
+            profileError
+          );
           // Continue with login even if profile fetch fails
         }
 
         dispatch({
-          type: "AUTH_SUCCESS",
+          type: "LOGIN_SUCCESS",
           payload: {
             user: loginResponse.userResponse,
             profile: profile,
           },
         });
 
-        // Check for redirect parameter in URL
+        // Determine redirect path
         const urlParams = new URLSearchParams(window.location.search);
         const redirectPath =
           urlParams.get("redirect") ||
           getRedirectPath(loginResponse.userResponse.role);
 
+        console.log("🚀 Redirecting to:", redirectPath);
         router.push(redirectPath);
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Login failed";
-        dispatch({ type: "AUTH_FAILURE", payload: errorMessage });
+        console.error("❌ Login failed:", errorMessage);
+        dispatch({ type: "LOGIN_FAILURE", payload: errorMessage });
         throw error;
       }
     },
@@ -258,15 +395,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Logout function
   const logout = useCallback(async () => {
     try {
+      console.log("🚪 Starting logout process...");
       await authService.logout();
+      console.log("✅ Logout successful");
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("❌ Logout error:", error);
     } finally {
-      // Clear localStorage
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_state");
-      }
-      dispatch({ type: "AUTH_LOGOUT" });
+      dispatch({ type: "LOGOUT" });
       router.push("/login");
     }
   }, [router]);
@@ -278,51 +413,49 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error("No user ID available for token refresh");
       }
 
+      console.log("🔄 Refreshing token...");
       await authService.refreshToken(authState.user.id);
 
-      // Re-fetch user data to ensure we have the latest information
-      await getCurrentUser();
+      // Re-verify auth status after token refresh
+      await verifyAuthStatus();
     } catch (error) {
-      console.error("Token refresh failed:", error);
-      dispatch({ type: "AUTH_LOGOUT" });
-      router.push("/login");
+      console.error("❌ Token refresh failed:", error);
+      dispatch({ type: "LOGOUT" });
     }
-  }, [authState.user?.id, router]);
+  }, [authState.user?.id, verifyAuthStatus]);
 
   // Get current user function
   const getCurrentUser = useCallback(async () => {
     try {
+      console.log("👤 Fetching current user...");
       const profile = await authService.getCurrentUser();
       dispatch({
-        type: "AUTH_SUCCESS",
+        type: "LOGIN_SUCCESS",
         payload: {
           user: profile.user,
           profile: profile,
         },
       });
     } catch (error) {
-      console.error("Failed to get current user:", error);
-      dispatch({ type: "AUTH_LOGOUT" });
-      router.push("/login");
+      console.error("❌ Failed to get current user:", error);
+      dispatch({ type: "LOGOUT" });
     }
-  }, [router]);
+  }, []);
 
   // Refresh profile function
   const refreshProfile = useCallback(async () => {
     try {
+      console.log("🔄 Refreshing profile...");
       const profile = await authService.getCurrentUser();
       dispatch({
-        type: "AUTH_SUCCESS",
-        payload: {
-          user: authState.user || profile.user, // Use existing user or fallback to profile user
-          profile: profile,
-        },
+        type: "PROFILE_UPDATE",
+        payload: profile,
       });
     } catch (error) {
-      console.error("Failed to refresh profile:", error);
+      console.error("❌ Failed to refresh profile:", error);
       // Don't logout on profile refresh failure, just log the error
     }
-  }, [authState.user]);
+  }, []);
 
   // Clear error function
   const clearError = useCallback(() => {
@@ -333,7 +466,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isAdmin = authState.user?.role === Role.ADMIN;
   const isTeacher = authState.user?.role === Role.TEACHER;
   const isStudent = authState.user?.role === Role.STUDENT;
-  const isProfileComplete = authState.profile !== null;
+  const isProfileComplete = Boolean(
+    authState.profile?.firstName && authState.profile?.lastName
+  );
+  const hasValidSession = authState.isAuthenticated && Boolean(authState.user);
 
   // Context value
   const contextValue: AuthContextType = {
@@ -389,12 +525,12 @@ export function withAuth<P extends object>(
     const router = useRouter();
 
     useEffect(() => {
-      // Only redirect to login if we're definitely not loading and not authenticated
       if (!authState.isLoading && !authState.isAuthenticated) {
-        const currentPath = window.location.pathname;
+        const currentPath = window.location.pathname + window.location.search;
         const redirectUrl = `/login?redirect=${encodeURIComponent(
           currentPath
         )}`;
+        console.log("🔒 Not authenticated, redirecting to:", redirectUrl);
         router.push(redirectUrl);
       }
     }, [authState.isAuthenticated, authState.isLoading, router]);
@@ -403,13 +539,15 @@ export function withAuth<P extends object>(
     if (authState.isLoading) {
       return (
         <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-          <span className="ml-4 text-gray-600">Checking authentication...</span>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+          <span className="ml-4 text-gray-600">
+            Verifying authentication...
+          </span>
         </div>
       );
     }
 
-    // Don't render anything if not authenticated (will redirect)
+    // Don't render component if not authenticated
     if (!authState.isAuthenticated) {
       return null;
     }
@@ -430,24 +568,76 @@ export function withRole<P extends object>(
     useEffect(() => {
       if (!authState.isLoading && authState.isAuthenticated) {
         if (!authState.user || !requiredRoles.includes(authState.user.role)) {
+          console.log(
+            "🚫 Access denied. User role:",
+            authState.user?.role,
+            "Required:",
+            requiredRoles
+          );
           router.push("/unauthorized");
         }
       }
     }, [authState, router]);
 
+    // Show loading spinner while checking roles
     if (authState.isLoading) {
       return (
         <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+          <span className="ml-4 text-gray-600">Checking permissions...</span>
         </div>
       );
     }
 
+    // Don't render if not authenticated or wrong role
     if (
       !authState.isAuthenticated ||
       !authState.user ||
       !requiredRoles.includes(authState.user.role)
     ) {
+      return null;
+    }
+
+    return <Component {...props} />;
+  };
+}
+
+// HOC for components that require a complete profile
+export function withProfile<P extends object>(
+  Component: React.ComponentType<P>
+): React.ComponentType<P> {
+  return function ProfileRequiredComponent(props: P) {
+    const { authState, isProfileComplete } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+      if (
+        !authState.isLoading &&
+        authState.isAuthenticated &&
+        !isProfileComplete
+      ) {
+        console.log("📝 Profile incomplete, redirecting to profile setup");
+        router.push("/profile-setup");
+      }
+    }, [
+      authState.isAuthenticated,
+      authState.isLoading,
+      isProfileComplete,
+      router,
+    ]);
+
+    // Show loading spinner while checking profile
+    if (authState.isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+          <span className="ml-4 text-gray-600">Loading profile...</span>
+        </div>
+      );
+    }
+
+    // Don't render if profile is not complete
+    if (!authState.isAuthenticated || !isProfileComplete) {
       return null;
     }
 

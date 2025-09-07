@@ -12,15 +12,21 @@ import { MotionCard, MotionHoverText } from "../utils/motion-wrapper";
 export default function Header(): JSX.Element {
   const router = useRouter();
   const pathname = usePathname();
-  const { authState, logout } = useAuth();
+  const { authState, logout, user, profile } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
   const mobileRef = useRef<HTMLDivElement | null>(null);
+
+  // Track client-side mounting to prevent hydration mismatches
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Close overlays on navigation change
   useEffect(() => {
@@ -77,6 +83,18 @@ export default function Header(): JSX.Element {
       setDropdownOpen(false);
     }
   }, [logout]);
+
+  // Get display name for user dropdown
+  const getDisplayName = useCallback(() => {
+    if (profile?.firstName && profile?.lastName) {
+      // If profile exists, show full name
+      return `${profile.firstName} ${profile.lastName}`;
+    } else if (user?.email) {
+      // Fallback to email username if no profile
+      return user.email.split("@")[0];
+    }
+    return "Account";
+  }, [profile, user]);
 
   return (
     <>
@@ -148,46 +166,66 @@ export default function Header(): JSX.Element {
                   Contact
                 </button>
               </MotionHoverText>
-              <MotionHoverText>
-                <Link
-                  href="/login"
-                  className="text-md font-medium hover:text-gray-900 transition">
-                  Login
-                </Link>
-              </MotionHoverText>
+              {isClient && !authState.isAuthenticated && (
+                <MotionHoverText>
+                  <Link
+                    href="/login"
+                    className="text-md font-medium hover:text-gray-900 transition">
+                    Login
+                  </Link>
+                </MotionHoverText>
+              )}
             </nav>
 
             {/* Mobile toggle and dropdown */}
             <div className="flex items-center gap-3 mr-1.5">
-              {authState.isAuthenticated && authState.user && (
+              {isClient && authState.isAuthenticated && authState.user && (
                 <div className="relative" ref={menuRef}>
                   <button
                     onClick={() => setDropdownOpen((v) => !v)}
-                    className="px-2 py-1 rounded-md hover:bg-muted/5">
-                    {authState.user.email
-                      ? authState.user.email.split("@")[0]
-                      : "Account"}
+                    className="px-2 py-1 rounded-md hover:bg-muted/5 max-w-[150px] sm:max-w-[200px] truncate text-left">
+                    {getDisplayName()}
                   </button>
                   {dropdownOpen && (
-                    <ul className="absolute right-0 mt-2 w-44 bg-card border border-border rounded-md shadow-md overflow-hidden z-50 transform -translate-x-4 md:translate-x-0">
-                      <li>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted/5"
-                          onClick={() => {
-                            setDropdownOpen(false);
-                            router.push("/account-settings");
-                          }}>
-                          Account Settings
-                        </button>
-                      </li>
-                      <li>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted/5"
-                          onClick={handleLogout}>
-                          Logout
-                        </button>
-                      </li>
-                    </ul>
+                    <div className="absolute right-0 mt-2 w-48 sm:w-52 bg-card border border-border rounded-md shadow-md overflow-hidden z-50 transform -translate-x-4 md:translate-x-0">
+                      {/* User Info Section */}
+                      <div className="px-4 py-3 border-b border-border bg-muted/5">
+                        <div className="text-sm font-medium truncate">
+                          {getDisplayName()}
+                        </div>
+                        {user?.email && (
+                          <div className="text-xs text-muted-foreground truncate">
+                            {user.email}
+                          </div>
+                        )}
+                        {user?.role && (
+                          <div className="text-xs text-blue-600 font-medium mt-1">
+                            {user.role}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Menu Items */}
+                      <ul className="py-1">
+                        <li>
+                          <button
+                            className="w-full text-left px-4 py-2 hover:bg-muted/5 text-sm"
+                            onClick={() => {
+                              setDropdownOpen(false);
+                              router.push("/account-settings");
+                            }}>
+                            Account Settings
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            className="w-full text-left px-4 py-2 hover:bg-muted/5 text-sm text-red-600"
+                            onClick={handleLogout}>
+                            Logout
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
                   )}
                 </div>
               )}
@@ -255,7 +293,7 @@ export default function Header(): JSX.Element {
                 Contact
               </button>
 
-              {!authState.isAuthenticated && (
+              {isClient && !authState.isAuthenticated && (
                 <Link
                   href="/login"
                   onClick={() => setMobileOpen(false)}

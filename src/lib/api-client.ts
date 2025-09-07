@@ -97,11 +97,19 @@ class ApiClient {
 
         // Only log errors for non-auth failures
         if (!isAuthFailure || !isAuthEndpoint) {
-          console.error("� API Response Error:", {
+          console.error("🚨 API Response Error:", {
             status: error.response?.status,
             statusText: error.response?.statusText,
             url: error.config?.url,
+            method: error.config?.method?.toUpperCase(),
             data: error.response?.data,
+            errorMessage: error.message,
+          });
+        } else {
+          // For auth failures, log less verbose info
+          console.log("🔐 Authentication required:", {
+            status: error.response?.status,
+            url: error.config?.url,
           });
         }
 
@@ -122,8 +130,24 @@ class ApiClient {
           } else {
             errorDetails = error.response.data;
           }
+        } else if (error.request) {
+          // Request was made but no response received (network error)
+          console.error("🌐 Network Error:", {
+            url: error.config?.url,
+            method: error.config?.method?.toUpperCase(),
+            message: error.message,
+            code: error.code,
+          });
+          errorMessage = "Network error - please check your connection";
+          errorDetails = { originalError: error.message, code: error.code };
         } else if (error.message) {
+          // Something else happened in setting up the request
+          console.error("⚠️ Request Setup Error:", {
+            message: error.message,
+            stack: error.stack,
+          });
           errorMessage = error.message;
+          errorDetails = { originalError: error.message };
         }
 
         throw new ApiError(

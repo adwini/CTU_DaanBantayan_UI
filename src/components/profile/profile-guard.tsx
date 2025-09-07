@@ -46,12 +46,12 @@ export default function ProfileGuard({ children }: ProfileGuardProps) {
     return (
       <>
         {/* Render a loading/blocking screen */}
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="text-center max-w-md mx-auto">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
               Profile Setup Required
             </h2>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600">
               Please complete your profile to continue using the system.
             </p>
           </div>

@@ -97,11 +97,34 @@ class AuthenticationService {
 
   /**
    * Check if user is authenticated by making a request to a protected endpoint
+   * Added timeout to prevent long waits that cause logout on refresh
    */
   async checkAuthStatus(): Promise<AuthStatusResponse> {
-    try {
-      console.log("🔍 Checking authentication status...");
+    // Create a timeout promise to limit auth verification time
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Auth verification timeout"));
+      }, 5000); // 5 second timeout
+    });
 
+    try {
+      console.log("🔍 Checking authentication status with 5s timeout...");
+
+      // Race between auth check and timeout
+      const authCheck = this.performAuthCheck();
+      const result = await Promise.race([authCheck, timeoutPromise]);
+      return result;
+    } catch (error) {
+      console.warn("❌ Auth status check failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Perform the actual authentication check
+   */
+  private async performAuthCheck(): Promise<AuthStatusResponse> {
+    try {
       // Try to get current user profile first
       try {
         const profile = await this.getCurrentUser();
@@ -131,7 +154,7 @@ class AuthenticationService {
 
           // If we have saved user info in localStorage, use it
           if (typeof window !== "undefined") {
-            const savedState = localStorage.getItem("auth_state");
+            const savedState = localStorage.getItem("ctu_auth_state");
             if (savedState) {
               try {
                 const parsed = JSON.parse(savedState);
@@ -165,7 +188,7 @@ class AuthenticationService {
 
             // Same logic as above - try to get user from localStorage
             if (typeof window !== "undefined") {
-              const savedState = localStorage.getItem("auth_state");
+              const savedState = localStorage.getItem("ctu_auth_state");
               if (savedState) {
                 try {
                   const parsed = JSON.parse(savedState);

@@ -149,57 +149,59 @@ export function ManageSectionsComponent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load sections and advisers function - used for initial load and refresh
+  const loadSections = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      console.log("🔄 Loading sections data...");
+
+      // Fetch sections and teachers in parallel
+      const [sectionsResponse, teachersResponse] = await Promise.all([
+        sectionsService.getAllSections(),
+        profilesService.getAllTeachers(),
+      ]);
+
+      // Transform API sections to component sections
+      const transformedSections: Section[] = sectionsResponse.map(
+        (apiSection) => ({
+          id: parseInt(apiSection.id) || Math.random(),
+          sectionName: apiSection.name,
+          gradeLevel: apiSection.gradeLevel,
+          adviserId: apiSection.id, // Using section ID as a placeholder
+          adviserName: apiSection.adviser,
+        })
+      );
+
+      // Transform teachers to adviser options
+      const adviserOptions = teachersResponse.map((teacher) => ({
+        id: teacher.id,
+        name: `${teacher.firstName} ${teacher.lastName}`,
+      }));
+
+      setSections(transformedSections);
+      setAdvisers(adviserOptions);
+      console.log("✅ Sections data loaded successfully:", transformedSections);
+    } catch (error) {
+      console.error("❌ Failed to fetch sections data:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to load sections data"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch sections and advisers on component mount
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Fetch sections and teachers in parallel
-        const [sectionsResponse, teachersResponse] = await Promise.all([
-          sectionsService.getAllSections(),
-          profilesService.getAllTeachers(),
-        ]);
-
-        // Transform API sections to component sections
-        const transformedSections: Section[] = sectionsResponse.map(
-          (apiSection) => ({
-            id: parseInt(apiSection.id) || Math.random(),
-            sectionName: apiSection.name,
-            gradeLevel: apiSection.gradeLevel,
-            adviserId: apiSection.id, // Using section ID as a placeholder
-            adviserName: apiSection.adviser,
-          })
-        );
-
-        // Transform teachers to adviser options
-        const adviserOptions = teachersResponse.map((teacher) => ({
-          id: teacher.id,
-          name: `${teacher.firstName} ${teacher.lastName}`,
-        }));
-
-        setSections(transformedSections);
-        setAdvisers(adviserOptions);
-      } catch (error) {
-        console.error("Failed to fetch sections data:", error);
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Failed to load sections data"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+    loadSections();
   }, []);
 
   const handleAddSection = async (
     section: Omit<Section, "id" | "adviserName">
   ) => {
     try {
+      setError(null);
       // Find the adviser name based on adviserId
       const adviser = advisers.find((a) => a.id === section.adviserId);
 
@@ -213,20 +215,13 @@ export function ManageSectionsComponent() {
       console.log("Section created:", result);
 
       // Refresh the sections list
-      const updatedSections = await sectionsService.getAllSections();
-      const transformedSections: Section[] = updatedSections.map(
-        (apiSection) => ({
-          id: parseInt(apiSection.id) || Math.random(),
-          sectionName: apiSection.name,
-          gradeLevel: apiSection.gradeLevel,
-          adviserId: apiSection.id,
-          adviserName: apiSection.adviser,
-        })
-      );
-      setSections(transformedSections);
+      await loadSections();
     } catch (error) {
       console.error("Failed to add section:", error);
       setError(
+        error instanceof Error ? error.message : "Failed to add section"
+      );
+      throw new Error(
         error instanceof Error ? error.message : "Failed to add section"
       );
     }
@@ -237,6 +232,7 @@ export function ManageSectionsComponent() {
     sectionData: Partial<Section>
   ) => {
     try {
+      setError(null);
       // Find the current section
       const currentSection = sections.find((s) => s.id === id);
       if (!currentSection) return;
@@ -264,20 +260,13 @@ export function ManageSectionsComponent() {
       console.log("Section updated:", result);
 
       // Refresh the sections list
-      const updatedSections = await sectionsService.getAllSections();
-      const transformedSections: Section[] = updatedSections.map(
-        (apiSection) => ({
-          id: parseInt(apiSection.id) || Math.random(),
-          sectionName: apiSection.name,
-          gradeLevel: apiSection.gradeLevel,
-          adviserId: apiSection.id,
-          adviserName: apiSection.adviser,
-        })
-      );
-      setSections(transformedSections);
+      await loadSections();
     } catch (error) {
       console.error("Failed to edit section:", error);
       setError(
+        error instanceof Error ? error.message : "Failed to edit section"
+      );
+      throw new Error(
         error instanceof Error ? error.message : "Failed to edit section"
       );
     }
@@ -285,17 +274,21 @@ export function ManageSectionsComponent() {
 
   const handleDeleteSection = async (id: number) => {
     try {
+      setError(null);
       const section = sections.find((s) => s.id === id);
       if (!section) return;
 
       await sectionsService.deleteSection(section.adviserId);
       console.log("Section deleted:", id);
 
-      // Remove from local state
-      setSections(sections.filter((s) => s.id !== id));
+      // Refresh the sections list to ensure consistency
+      await loadSections();
     } catch (error) {
       console.error("Failed to delete section:", error);
       setError(
+        error instanceof Error ? error.message : "Failed to delete section"
+      );
+      throw new Error(
         error instanceof Error ? error.message : "Failed to delete section"
       );
     }
@@ -375,6 +368,7 @@ export function ManageSectionsComponent() {
       onAdd={handleAddSection}
       onEdit={handleEditSection}
       onDelete={handleDeleteSection}
+      onRefresh={loadSections}
       searchPlaceholder="Search sections..."
       addButtonText="Add Section"
       editModalTitle="Edit Section"

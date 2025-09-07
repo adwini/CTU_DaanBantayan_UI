@@ -98,40 +98,42 @@ export function ManageSubjectsComponent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load subjects function - used for initial load and refresh
+  const loadSubjects = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      console.log("🔄 Loading subjects...");
+
+      const apiSubjects = await subjectsService.getAllSubjects();
+
+      // Transform API subjects to component subjects
+      const transformedSubjects: Subject[] = apiSubjects.map((apiSubject) => ({
+        id: parseInt(apiSubject.id) || Math.random(),
+        subjectCode: apiSubject.subjectCode,
+        subjectName: apiSubject.name,
+      }));
+
+      setSubjects(transformedSubjects);
+      console.log("✅ Subjects loaded successfully:", transformedSubjects);
+    } catch (error) {
+      console.error("❌ Failed to fetch subjects:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to load subjects"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch subjects on component mount
   useEffect(() => {
-    const fetchSubjects = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const apiSubjects = await subjectsService.getAllSubjects();
-
-        // Transform API subjects to component subjects
-        const transformedSubjects: Subject[] = apiSubjects.map(
-          (apiSubject) => ({
-            id: parseInt(apiSubject.id) || Math.random(),
-            subjectCode: apiSubject.subjectCode,
-            subjectName: apiSubject.name,
-          })
-        );
-
-        setSubjects(transformedSubjects);
-      } catch (error) {
-        console.error("Failed to fetch subjects:", error);
-        setError(
-          error instanceof Error ? error.message : "Failed to load subjects"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSubjects();
+    loadSubjects();
   }, []);
 
   const handleAddSubject = async (subject: Omit<Subject, "id">) => {
     try {
+      setError(null);
       const newSubjectData = {
         subjectCode: subject.subjectCode as string,
         name: subject.subjectName as string,
@@ -141,18 +143,13 @@ export function ManageSubjectsComponent() {
       console.log("Subject created:", result);
 
       // Refresh the subjects list
-      const updatedSubjects = await subjectsService.getAllSubjects();
-      const transformedSubjects: Subject[] = updatedSubjects.map(
-        (apiSubject) => ({
-          id: parseInt(apiSubject.id) || Math.random(),
-          subjectCode: apiSubject.subjectCode,
-          subjectName: apiSubject.name,
-        })
-      );
-      setSubjects(transformedSubjects);
+      await loadSubjects();
     } catch (error) {
       console.error("Failed to add subject:", error);
       setError(
+        error instanceof Error ? error.message : "Failed to add subject"
+      );
+      throw new Error(
         error instanceof Error ? error.message : "Failed to add subject"
       );
     }
@@ -163,6 +160,7 @@ export function ManageSubjectsComponent() {
     subjectData: Partial<Subject>
   ) => {
     try {
+      setError(null);
       // Find the current subject
       const currentSubject = subjects.find((s) => s.id === id);
       if (!currentSubject) return;
@@ -180,18 +178,13 @@ export function ManageSubjectsComponent() {
       console.log("Subject updated:", result);
 
       // Refresh the subjects list
-      const updatedSubjects = await subjectsService.getAllSubjects();
-      const transformedSubjects: Subject[] = updatedSubjects.map(
-        (apiSubject) => ({
-          id: parseInt(apiSubject.id) || Math.random(),
-          subjectCode: apiSubject.subjectCode,
-          subjectName: apiSubject.name,
-        })
-      );
-      setSubjects(transformedSubjects);
+      await loadSubjects();
     } catch (error) {
       console.error("Failed to edit subject:", error);
       setError(
+        error instanceof Error ? error.message : "Failed to edit subject"
+      );
+      throw new Error(
         error instanceof Error ? error.message : "Failed to edit subject"
       );
     }
@@ -199,14 +192,18 @@ export function ManageSubjectsComponent() {
 
   const handleDeleteSubject = async (id: number) => {
     try {
+      setError(null);
       await subjectsService.deleteSubject(id.toString());
       console.log("Subject deleted:", id);
 
-      // Remove from local state
-      setSubjects(subjects.filter((s) => s.id !== id));
+      // Refresh the subjects list to ensure consistency
+      await loadSubjects();
     } catch (error) {
       console.error("Failed to delete subject:", error);
       setError(
+        error instanceof Error ? error.message : "Failed to delete subject"
+      );
+      throw new Error(
         error instanceof Error ? error.message : "Failed to delete subject"
       );
     }
@@ -250,6 +247,7 @@ export function ManageSubjectsComponent() {
       onAdd={handleAddSubject}
       onEdit={handleEditSubject}
       onDelete={handleDeleteSubject}
+      onRefresh={loadSubjects}
       searchPlaceholder="Search subjects..."
       addButtonText="Add Subject"
       editModalTitle="Edit Subject"
