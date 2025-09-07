@@ -42,6 +42,18 @@ export function LoginForm({
     }
   }, [authState.isAuthenticated, authState.isLoading, router, searchParams]);
 
+  // Don't render the form if user is already authenticated
+  if (authState.isAuthenticated && !authState.isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[200px] gap-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <p className="text-sm text-muted-foreground">
+          Redirecting to dashboard...
+        </p>
+      </div>
+    );
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({

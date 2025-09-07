@@ -29,7 +29,6 @@ import {
   Tooltip,
   LineChart,
   Line,
-  ResponsiveContainer,
 } from "recharts";
 import {
   IconBook,
@@ -510,20 +509,23 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
 
         {/* Charts Section */}
         <div className="px-4 lg:px-6 space-y-6">
-          {/* Pie Chart - Students per Section */}
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <IconTrendingUp className="h-5 w-5" />
-                Students per Section
-              </CardTitle>
-              <CardDescription>
-                Distribution of students across sections
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={pieChartConfig} className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
+          {/* Charts Grid - Mobile: Stack, Desktop: Side by Side */}
+          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+            {/* Pie Chart - Students per Section */}
+            <Card className="w-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IconTrendingUp className="h-5 w-5" />
+                  Students per Section
+                </CardTitle>
+                <CardDescription>
+                  Distribution of students across sections
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer
+                  config={pieChartConfig}
+                  className="h-[300px] sm:h-[400px]">
                   <PieChart>
                     <defs>
                       <linearGradient
@@ -578,7 +580,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                       cy="50%"
                       labelLine={false}
                       label={({ name, value }) => `${name}: ${value}`}
-                      outerRadius={120}
+                      outerRadius="80%"
                       fill="#8884d8"
                       dataKey="value">
                       {studentsPerSectionData.map((entry, index) => (
@@ -587,25 +589,25 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                     </Pie>
                     <Tooltip />
                   </PieChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+                </ChartContainer>
+              </CardContent>
+            </Card>
 
-          {/* Bar Chart - Subjects per Grade Level */}
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <IconBook className="h-5 w-5" />
-                Subjects per Grade Level
-              </CardTitle>
-              <CardDescription>
-                Number of subjects taught per grade
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={barChartConfig} className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
+            {/* Bar Chart - Subjects per Grade Level */}
+            <Card className="w-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IconBook className="h-5 w-5" />
+                  Subjects per Grade Level
+                </CardTitle>
+                <CardDescription>
+                  Number of subjects taught per grade
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer
+                  config={barChartConfig}
+                  className="h-[300px] sm:h-[400px]">
                   <BarChart data={dashboardData.subjectsByGrade}>
                     <defs>
                       <linearGradient
@@ -624,10 +626,10 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                     <Tooltip />
                     <Bar dataKey="subjects" fill="url(#barGradient)" />
                   </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Line Chart - Teacher Load Status */}
           <Card className="w-full">
@@ -641,49 +643,49 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={lineChartConfig} className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dashboardData.teacherLoadStatus}>
-                    <defs>
-                      <linearGradient
-                        id="assignedGradient"
-                        x1="0%"
-                        y1="0%"
-                        x2="100%"
-                        y2="0%">
-                        <stop offset="0%" stopColor="#10b981" />
-                        <stop offset="100%" stopColor="#059669" />
-                      </linearGradient>
-                      <linearGradient
-                        id="pendingGradient"
-                        x1="0%"
-                        y1="0%"
-                        x2="100%"
-                        y2="0%">
-                        <stop offset="0%" stopColor="#ef4444" />
-                        <stop offset="100%" stopColor="#dc2626" />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="assigned"
-                      stroke="url(#assignedGradient)"
-                      strokeWidth={3}
-                      name="Assigned"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="pending"
-                      stroke="url(#pendingGradient)"
-                      strokeWidth={3}
-                      name="Pending"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <ChartContainer
+                config={lineChartConfig}
+                className="h-[300px] sm:h-[400px]">
+                <LineChart data={dashboardData.teacherLoadStatus}>
+                  <defs>
+                    <linearGradient
+                      id="assignedGradient"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="0%">
+                      <stop offset="0%" stopColor="#10b981" />
+                      <stop offset="100%" stopColor="#059669" />
+                    </linearGradient>
+                    <linearGradient
+                      id="pendingGradient"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="0%">
+                      <stop offset="0%" stopColor="#ef4444" />
+                      <stop offset="100%" stopColor="#dc2626" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="assigned"
+                    stroke="url(#assignedGradient)"
+                    strokeWidth={3}
+                    name="Assigned"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="pending"
+                    stroke="url(#pendingGradient)"
+                    strokeWidth={3}
+                    name="Pending"
+                  />
+                </LineChart>
               </ChartContainer>
             </CardContent>
           </Card>

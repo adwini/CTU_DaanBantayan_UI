@@ -69,10 +69,14 @@ export function NavUser({
   const handleLogout = useCallback(async () => {
     try {
       await logout();
+      // Redirect to landing page after successful logout
+      router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
+      // Even if logout fails on server, redirect to landing page
+      router.push("/");
     }
-  }, [logout]);
+  }, [logout, router]);
 
   const handleProfileClick = useCallback(() => {
     setProfileFormData({
@@ -190,14 +194,6 @@ export function NavUser({
                 <IconUserCircle />
                 Account
               </DropdownMenuItem>
-              {/* <DropdownMenuItem>
-                <IconCreditCard />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconNotification />
-                Notifications
-              </DropdownMenuItem> */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>

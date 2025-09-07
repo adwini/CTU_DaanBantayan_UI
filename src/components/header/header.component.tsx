@@ -166,7 +166,7 @@ export default function Header(): JSX.Element {
                   Contact
                 </button>
               </MotionHoverText>
-              {isClient && !authState.isAuthenticated && (
+              {isClient && (!authState.isAuthenticated || pathname === "/") && (
                 <MotionHoverText>
                   <Link
                     href="/login"
@@ -179,56 +179,59 @@ export default function Header(): JSX.Element {
 
             {/* Mobile toggle and dropdown */}
             <div className="flex items-center gap-3 mr-1.5">
-              {isClient && authState.isAuthenticated && authState.user && (
-                <div className="relative" ref={menuRef}>
-                  <button
-                    onClick={() => setDropdownOpen((v) => !v)}
-                    className="px-2 py-1 rounded-md hover:bg-muted/5 max-w-[150px] sm:max-w-[200px] truncate text-left">
-                    {getDisplayName()}
-                  </button>
-                  {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 sm:w-52 bg-card border border-border rounded-md shadow-md overflow-hidden z-50 transform -translate-x-4 md:translate-x-0">
-                      {/* User Info Section */}
-                      <div className="px-4 py-3 border-b border-border bg-muted/5">
-                        <div className="text-sm font-medium truncate">
-                          {getDisplayName()}
+              {isClient &&
+                authState.isAuthenticated &&
+                authState.user &&
+                pathname !== "/" && (
+                  <div className="relative" ref={menuRef}>
+                    <button
+                      onClick={() => setDropdownOpen((v) => !v)}
+                      className="px-2 py-1 rounded-md hover:bg-muted/5 max-w-[150px] sm:max-w-[200px] truncate text-left">
+                      {getDisplayName()}
+                    </button>
+                    {dropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-48 sm:w-52 bg-card border border-border rounded-md shadow-md overflow-hidden z-50 transform -translate-x-4 md:translate-x-0">
+                        {/* User Info Section */}
+                        <div className="px-4 py-3 border-b border-border bg-muted/5">
+                          <div className="text-sm font-medium truncate">
+                            {getDisplayName()}
+                          </div>
+                          {user?.email && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {user.email}
+                            </div>
+                          )}
+                          {user?.role && (
+                            <div className="text-xs text-blue-600 font-medium mt-1">
+                              {user.role}
+                            </div>
+                          )}
                         </div>
-                        {user?.email && (
-                          <div className="text-xs text-muted-foreground truncate">
-                            {user.email}
-                          </div>
-                        )}
-                        {user?.role && (
-                          <div className="text-xs text-blue-600 font-medium mt-1">
-                            {user.role}
-                          </div>
-                        )}
-                      </div>
 
-                      {/* Menu Items */}
-                      <ul className="py-1">
-                        <li>
-                          <button
-                            className="w-full text-left px-4 py-2 hover:bg-muted/5 text-sm"
-                            onClick={() => {
-                              setDropdownOpen(false);
-                              router.push("/account-settings");
-                            }}>
-                            Account Settings
-                          </button>
-                        </li>
-                        <li>
-                          <button
-                            className="w-full text-left px-4 py-2 hover:bg-muted/5 text-sm text-red-600"
-                            onClick={handleLogout}>
-                            Logout
-                          </button>
-                        </li>
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+                        {/* Menu Items */}
+                        <ul className="py-1">
+                          <li>
+                            <button
+                              className="w-full text-left px-4 py-2 hover:bg-muted/5 text-sm"
+                              onClick={() => {
+                                setDropdownOpen(false);
+                                router.push("/account-settings");
+                              }}>
+                              Account Settings
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              className="w-full text-left px-4 py-2 hover:bg-muted/5 text-sm text-red-600"
+                              onClick={handleLogout}>
+                              Logout
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
 
               <div ref={mobileRef} className="md:hidden">
                 <button
@@ -293,7 +296,7 @@ export default function Header(): JSX.Element {
                 Contact
               </button>
 
-              {isClient && !authState.isAuthenticated && (
+              {isClient && (!authState.isAuthenticated || pathname === "/") && (
                 <Link
                   href="/login"
                   onClick={() => setMobileOpen(false)}
