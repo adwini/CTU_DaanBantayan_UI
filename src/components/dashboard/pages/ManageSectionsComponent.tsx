@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { sectionsService } from "@/services/sections.service";
 import { profilesService } from "@/services/profiles.service";
 import { Section as ApiSection, Profile } from "@/types/api";
+import { TableLoading } from "@/components/utils";
 
 // Section interface extending BaseItem
 interface Section extends BaseItem {
@@ -332,12 +333,7 @@ export function ManageSectionsComponent() {
 
   // Show loading state
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-        <span className="ml-2 text-gray-600">Loading sections data...</span>
-      </div>
-    );
+    return <TableLoading text="Loading sections data..." />;
   }
 
   // Show error state

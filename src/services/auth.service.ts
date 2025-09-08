@@ -81,7 +81,7 @@ class AuthenticationService {
   }
 
   /**
-   * Get current user profile
+   * Get current user profile with enhanced error handling
    */
   async getCurrentUser(): Promise<ProfileResponse> {
     try {
@@ -89,8 +89,35 @@ class AuthenticationService {
       return response.data;
     } catch (error) {
       if (error instanceof ApiError) {
-        throw new Error(this.getErrorMessage(error));
+        // Check if it's a server error (500) vs not found (404)
+        if (error.status === 500) {
+          console.warn(
+            "🚨 Server error fetching profile - likely database/server issue:",
+            error.message
+          );
+          // For 500 errors, we should retry or handle gracefully
+          // Don't immediately assume no profile exists
+          throw new Error(
+            "Server error fetching profile. Please try refreshing the page."
+          );
+        } else if (error.status === 404) {
+          console.log(
+            "📭 No profile found for user (404) - user needs to create profile"
+          );
+          throw new Error("Profile not found");
+        } else if (error.status === 403) {
+          console.warn("🔒 Access denied to profile endpoint (403)");
+          throw new Error("Access denied to profile");
+        } else {
+          console.warn(
+            "❌ Unexpected error fetching profile:",
+            error.status,
+            error.message
+          );
+          throw new Error(this.getErrorMessage(error));
+        }
       }
+      console.error("💥 Unknown error fetching profile:", error);
       throw new Error("Failed to get current user");
     }
   }
@@ -121,7 +148,7 @@ class AuthenticationService {
   }
 
   /**
-   * Perform the actual authentication check
+   * Perform the actual authentication check with smart error handling
    */
   private async performAuthCheck(): Promise<AuthStatusResponse> {
     try {
@@ -138,55 +165,87 @@ class AuthenticationService {
           profile: profile,
         };
       } catch (profileError) {
-        console.log(
-          "⚠️ Profile fetch failed (likely admin without profile):",
-          profileError
-        );
+        // Enhanced error handling - distinguish between server errors and missing profiles
+        const errorMessage =
+          profileError instanceof Error
+            ? profileError.message
+            : String(profileError);
 
-        // If profile fails, try to make any authenticated request to verify JWT is valid
-        // We'll try a few different endpoints to see if we're still authenticated
-        try {
-          // Try the teachers endpoint first
-          await apiClient.get("/api/teachers");
-          console.log(
-            "✅ Authentication verified via teachers endpoint - user is authenticated but has no profile"
+        if (errorMessage.includes("Server error fetching profile")) {
+          // This is a 500 error - server/database issue, not missing profile
+          console.warn(
+            "🚨 Server error detected - attempting profile recovery..."
           );
 
-          // If we have saved user info in localStorage, use it
-          if (typeof window !== "undefined") {
-            const savedState = localStorage.getItem("ctu_auth_state");
-            if (savedState) {
-              try {
-                const parsed = JSON.parse(savedState);
-                if (parsed.user) {
-                  console.log("✅ Using saved user info from localStorage");
-                  return {
-                    isAuthenticated: true,
-                    user: parsed.user,
-                    profile: undefined,
-                  };
+          // First verify we're still authenticated
+          try {
+            await apiClient.get("/api/teachers");
+            console.log(
+              "✅ Authentication verified - server error is temporary"
+            );
+
+            // User is authenticated, profile likely exists but server can't fetch it
+            // Get user info from localStorage and continue
+            if (typeof window !== "undefined") {
+              const savedState = localStorage.getItem("ctu_auth_state");
+              if (savedState) {
+                try {
+                  const parsed = JSON.parse(savedState);
+                  if (parsed.user && parsed.profile) {
+                    console.log(
+                      "🔄 Using cached profile data during server error"
+                    );
+                    return {
+                      isAuthenticated: true,
+                      user: parsed.user,
+                      profile: parsed.profile, // Use cached profile
+                    };
+                  } else if (parsed.user) {
+                    console.log(
+                      "⚠️ User cached but no profile - will retry profile fetch later"
+                    );
+                    return {
+                      isAuthenticated: true,
+                      user: parsed.user,
+                      profile: undefined,
+                    };
+                  }
+                } catch (e) {
+                  console.warn(
+                    "Failed to parse saved auth state during server error"
+                  );
                 }
-              } catch (e) {
-                console.warn("Failed to parse saved auth state");
               }
             }
+
+            // If no cached data, return authenticated but without profile temporarily
+            return {
+              isAuthenticated: true,
+              user: undefined,
+              profile: undefined,
+            };
+          } catch (authError) {
+            console.error(
+              "❌ Authentication also failed - user likely logged out"
+            );
+            throw new Error("Authentication failed");
           }
+        } else {
+          // This is likely a 404 (no profile) or other client error
+          console.log(
+            "⚠️ Profile fetch failed (likely user without profile):",
+            errorMessage
+          );
 
-          // Fallback: authenticated but no user info available
-          return {
-            isAuthenticated: true,
-            user: undefined,
-            profile: undefined,
-          };
-        } catch (teachersError) {
-          console.log("❌ Teachers endpoint also failed, trying subjects...");
-
+          // Verify authentication through alternative endpoints
           try {
-            // Try subjects endpoint as another fallback
-            await apiClient.get("/api/subjects");
-            console.log("✅ Authentication verified via subjects endpoint");
+            // Try the teachers endpoint first
+            await apiClient.get("/api/teachers");
+            console.log(
+              "✅ Authentication verified via teachers endpoint - user is authenticated but has no profile"
+            );
 
-            // Same logic as above - try to get user from localStorage
+            // Get user info from localStorage if available
             if (typeof window !== "undefined") {
               const savedState = localStorage.getItem("ctu_auth_state");
               if (savedState) {
@@ -197,7 +256,7 @@ class AuthenticationService {
                     return {
                       isAuthenticated: true,
                       user: parsed.user,
-                      profile: undefined,
+                      profile: undefined, // No profile found
                     };
                   }
                 } catch (e) {
@@ -206,17 +265,52 @@ class AuthenticationService {
               }
             }
 
+            // Fallback: authenticated but no user info available
             return {
               isAuthenticated: true,
               user: undefined,
               profile: undefined,
             };
-          } catch (subjectsError) {
-            console.log(
-              "❌ All authentication verification attempts failed:",
-              subjectsError
-            );
-            throw subjectsError;
+          } catch (teachersError) {
+            console.log("❌ Teachers endpoint also failed, trying subjects...");
+
+            try {
+              // Try subjects endpoint as another fallback
+              await apiClient.get("/api/subjects");
+              console.log("✅ Authentication verified via subjects endpoint");
+
+              // Same logic as above - try to get user from localStorage
+              if (typeof window !== "undefined") {
+                const savedState = localStorage.getItem("ctu_auth_state");
+                if (savedState) {
+                  try {
+                    const parsed = JSON.parse(savedState);
+                    if (parsed.user) {
+                      console.log("✅ Using saved user info from localStorage");
+                      return {
+                        isAuthenticated: true,
+                        user: parsed.user,
+                        profile: undefined,
+                      };
+                    }
+                  } catch (e) {
+                    console.warn("Failed to parse saved auth state");
+                  }
+                }
+              }
+
+              return {
+                isAuthenticated: true,
+                user: undefined,
+                profile: undefined,
+              };
+            } catch (subjectsError) {
+              console.log(
+                "❌ All authentication verification attempts failed:",
+                subjectsError
+              );
+              throw subjectsError;
+            }
           }
         }
       }

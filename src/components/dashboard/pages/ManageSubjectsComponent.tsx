@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { subjectsService } from "@/services/subjects.service";
 import { Subject as ApiSubject } from "@/types/api";
+import { TableLoading } from "@/components/utils";
 
 // Subject interface extending BaseItem
 interface Subject extends BaseItem {
@@ -211,12 +212,7 @@ export function ManageSubjectsComponent() {
 
   // Show loading state
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-        <span className="ml-2 text-gray-600">Loading subjects...</span>
-      </div>
-    );
+    return <TableLoading text="Loading subjects..." />;
   }
 
   // Show error state

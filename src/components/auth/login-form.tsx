@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth.context";
 import { LoginFormData } from "@/types/auth";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { RedirectLoading, ButtonLoading } from "@/components/utils";
 
 export function LoginForm({
   className,
@@ -44,14 +45,7 @@ export function LoginForm({
 
   // Don't render the form if user is already authenticated
   if (authState.isAuthenticated && !authState.isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[200px] gap-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <p className="text-sm text-muted-foreground">
-          Redirecting to dashboard...
-        </p>
-      </div>
-    );
+    return <RedirectLoading text="Redirecting to dashboard..." />;
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,10 +201,7 @@ export function LoginForm({
                     className="w-full"
                     disabled={authState.isLoading}>
                     {authState.isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Signing in...
-                      </>
+                      <ButtonLoading text="Signing in..." />
                     ) : (
                       "Sign In"
                     )}

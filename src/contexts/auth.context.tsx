@@ -29,6 +29,7 @@ import {
   ProfileResponse,
   Role,
 } from "@/types/auth";
+import { PageLoading } from "@/components/utils";
 
 // Storage key for persisting auth state
 const AUTH_STORAGE_KEY = "ctu_auth_state";
@@ -457,6 +458,101 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  // Smart profile retry mechanism for server errors
+  const retryProfileFetch = useCallback(async (maxRetries: number = 3) => {
+    console.log("🔄 Starting smart profile retry mechanism...");
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔍 Profile fetch attempt ${attempt}/${maxRetries}`);
+        const profile = await authService.getCurrentUser();
+
+        console.log("✅ Profile fetch successful after retry!");
+        dispatch({
+          type: "PROFILE_UPDATE",
+          payload: profile,
+        });
+        return profile; // Success!
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        if (errorMessage.includes("Server error fetching profile")) {
+          console.warn(
+            `⚠️ Server error on attempt ${attempt}/${maxRetries}, retrying in ${
+              attempt * 2
+            }s...`
+          );
+
+          if (attempt < maxRetries) {
+            // Wait with exponential backoff before retrying
+            await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
+            continue;
+          } else {
+            console.error(
+              "🚨 All profile retry attempts failed - server error persists"
+            );
+            // Don't logout, just show a toast/notification to user
+            return null;
+          }
+        } else {
+          // Not a server error (404, 403, etc.) - don't retry
+          console.log(
+            "❌ Profile fetch failed with non-server error:",
+            errorMessage
+          );
+          return null;
+        }
+      }
+    }
+
+    return null;
+  }, []);
+
+  // Auto-retry profile fetch when user is authenticated but profile is missing due to server error
+  useEffect(() => {
+    const autoRetryProfile = async () => {
+      // Only auto-retry if:
+      // 1. User is authenticated
+      // 2. No profile is loaded
+      // 3. We're not currently loading
+      // 4. We have cached user data (indicating this isn't a new user)
+      if (
+        authState.isAuthenticated &&
+        authState.user &&
+        !authState.profile &&
+        !authState.isLoading &&
+        typeof window !== "undefined"
+      ) {
+        const savedState = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (savedState) {
+          try {
+            const parsed = JSON.parse(savedState);
+            if (parsed.profile) {
+              console.log(
+                "🔄 Detected missing profile for authenticated user, attempting retry..."
+              );
+              // Delay the retry slightly to avoid immediate retry loops
+              setTimeout(() => {
+                retryProfileFetch(2); // Try 2 times with backoff
+              }, 3000); // Wait 3 seconds before first retry
+            }
+          } catch (e) {
+            // Ignore parsing errors
+          }
+        }
+      }
+    };
+
+    autoRetryProfile();
+  }, [
+    authState.isAuthenticated,
+    authState.user,
+    authState.profile,
+    authState.isLoading,
+    retryProfileFetch,
+  ]);
+
   // Clear error function
   const clearError = useCallback(() => {
     dispatch({ type: "CLEAR_ERROR" });
@@ -537,14 +633,7 @@ export function withAuth<P extends object>(
 
     // Show loading spinner while checking authentication
     if (authState.isLoading) {
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          <span className="ml-4 text-gray-600">
-            Verifying authentication...
-          </span>
-        </div>
-      );
+      return <PageLoading text="Verifying authentication..." />;
     }
 
     // Don't render component if not authenticated
@@ -581,12 +670,7 @@ export function withRole<P extends object>(
 
     // Show loading spinner while checking roles
     if (authState.isLoading) {
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          <span className="ml-4 text-gray-600">Checking permissions...</span>
-        </div>
-      );
+      return <PageLoading text="Checking permissions..." />;
     }
 
     // Don't render if not authenticated or wrong role
@@ -628,12 +712,7 @@ export function withProfile<P extends object>(
 
     // Show loading spinner while checking profile
     if (authState.isLoading) {
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          <span className="ml-4 text-gray-600">Loading profile...</span>
-        </div>
-      );
+      return <PageLoading text="Loading profile..." />;
     }
 
     // Don't render if profile is not complete

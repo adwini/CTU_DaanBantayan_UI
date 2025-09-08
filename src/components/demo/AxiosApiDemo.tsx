@@ -13,6 +13,7 @@ import { sectionsService } from "@/services/sections.service";
 import { apiTester } from "@/services/api-tester";
 import { useAuth } from "@/contexts/auth.context";
 import { Gender } from "@/types/api";
+import { ButtonLoading, InlineLoading } from "@/components/utils";
 
 export default function AxiosApiDemo() {
   const { authState } = useAuth();
@@ -298,16 +299,15 @@ export default function AxiosApiDemo() {
             onClick={runFullApiTest}
             disabled={loading}
             className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-semibold">
-            {loading ? "Running Tests..." : "Run Full API Test Suite"}
+            {loading ? (
+              <ButtonLoading text="Running Tests..." />
+            ) : (
+              "Run Full API Test Suite"
+            )}
           </button>
         </div>
 
-        {loading && (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Loading...</span>
-          </div>
-        )}
+        {loading && <InlineLoading text="Loading..." />}
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">

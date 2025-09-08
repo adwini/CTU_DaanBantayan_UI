@@ -51,6 +51,7 @@ export function AppSidebar({
     // Close sidebar on mobile after navigation
     setOpenMobile(false);
   };
+
   return (
     <>
       <Sidebar collapsible="offcanvas" {...props}>

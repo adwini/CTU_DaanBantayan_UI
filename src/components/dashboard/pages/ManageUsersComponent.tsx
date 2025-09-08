@@ -13,6 +13,7 @@ import { profilesService } from "@/services/profiles.service";
 import { Profile } from "@/types/api";
 import { Role } from "@/types/auth";
 import { Gender } from "@/types/api";
+import { TableLoading } from "@/components/utils";
 
 // User interface extending BaseItem - Simple setup as originally specified
 interface User extends BaseItem {
@@ -275,12 +276,7 @@ export function ManageUsersComponent() {
 
   // Show loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-        <span className="ml-4 text-gray-600">Loading users...</span>
-      </div>
-    );
+    return <TableLoading text="Loading users..." />;
   }
 
   // Show error state
