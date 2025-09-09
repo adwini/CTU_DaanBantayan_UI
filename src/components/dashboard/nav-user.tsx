@@ -39,6 +39,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { profilesService } from "@/services/profiles.service";
 import { Gender } from "@/types/api";
+import { toast } from "sonner";
 
 export function NavUser({
   user,
@@ -61,11 +62,85 @@ export function NavUser({
     lastName: profile?.lastName || "",
     gender: (profile?.gender as Gender) || Gender.OTHER,
     birthDate: profile?.birthDate || "",
-    contactNumber: profile?.contactNumber || "",
+    contactNumber: profile?.contactNumber
+      ? profile.contactNumber
+          .replace(/^\+63/, "")
+          .replace(/\s/g, "")
+          .replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")
+      : "",
     address: profile?.address || "",
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
+
+  // Validation function for required fields
+  const validateForm = useCallback(() => {
+    const errors: Record<string, string> = {};
+
+    // First name validation
+    if (!profileFormData.firstName.trim()) {
+      errors.firstName = "First name is required";
+    } else if (profileFormData.firstName.trim().length < 2) {
+      errors.firstName = "First name must be at least 2 characters";
+    }
+
+    // Last name validation
+    if (!profileFormData.lastName.trim()) {
+      errors.lastName = "Last name is required";
+    } else if (profileFormData.lastName.trim().length < 2) {
+      errors.lastName = "Last name must be at least 2 characters";
+    }
+
+    // Birth date validation
+    if (!profileFormData.birthDate.trim()) {
+      errors.birthDate = "Birth date is required";
+    } else {
+      const birthDate = new Date(profileFormData.birthDate);
+      const today = new Date();
+      const minAge = new Date(
+        today.getFullYear() - 100,
+        today.getMonth(),
+        today.getDate()
+      );
+      const maxAge = new Date(
+        today.getFullYear() - 5,
+        today.getMonth(),
+        today.getDate()
+      );
+
+      if (birthDate > today) {
+        errors.birthDate = "Birth date cannot be in the future";
+      } else if (birthDate < minAge) {
+        errors.birthDate = "Please enter a valid birth date";
+      } else if (birthDate > maxAge) {
+        errors.birthDate = "You must be at least 5 years old";
+      }
+    }
+
+    // Contact number validation (Philippine format: +63 9XX XXX XXXX)
+    if (!profileFormData.contactNumber.trim()) {
+      errors.contactNumber = "Contact number is required";
+    } else {
+      const cleanNumber = profileFormData.contactNumber.replace(/\s/g, "");
+      if (!/^9\d{9}$/.test(cleanNumber)) {
+        errors.contactNumber =
+          "Please enter a valid Philippine mobile number (9XX XXX XXXX)";
+      }
+    }
+
+    // Address validation
+    if (!profileFormData.address.trim()) {
+      errors.address = "Address is required";
+    } else if (profileFormData.address.trim().length < 10) {
+      errors.address = "Address must be at least 10 characters";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [profileFormData]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -93,7 +168,12 @@ export function NavUser({
         lastName: freshProfile?.lastName || "",
         gender: (freshProfile?.gender as Gender) || Gender.OTHER,
         birthDate: freshProfile?.birthDate || "",
-        contactNumber: freshProfile?.contactNumber || "",
+        contactNumber: freshProfile?.contactNumber
+          ? freshProfile.contactNumber
+              .replace(/^\+63/, "")
+              .replace(/\s/g, "")
+              .replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")
+          : "",
         address: freshProfile?.address || "",
       });
     } catch (error) {
@@ -105,18 +185,31 @@ export function NavUser({
         lastName: profile?.lastName || "",
         gender: (profile?.gender as Gender) || Gender.OTHER,
         birthDate: profile?.birthDate || "",
-        contactNumber: profile?.contactNumber || "",
+        contactNumber: profile?.contactNumber
+          ? profile.contactNumber
+              .replace(/^\+63/, "")
+              .replace(/\s/g, "")
+              .replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")
+          : "",
         address: profile?.address || "",
       });
     } finally {
       setIsLoadingProfile(false);
+      // Clear any previous validation errors when modal opens
+      setValidationErrors({});
     }
 
     setIsProfileModalOpen(true);
   }, [profile]);
   const handleProfileSave = useCallback(async () => {
+    // Validate form before saving
+    if (!validateForm()) {
+      toast.error("Please fix the validation errors before saving");
+      return;
+    }
+
     if (!profile?.id) {
-      console.error("No profile ID found");
+      toast.error("No profile ID found");
       return;
     }
 
@@ -126,29 +219,90 @@ export function NavUser({
       const updateData = {
         id: profile.id,
         ...profileFormData,
+        // Ensure contact number is saved with +63 prefix
+        contactNumber: profileFormData.contactNumber.startsWith("+63")
+          ? profileFormData.contactNumber
+          : `+63${profileFormData.contactNumber.replace(/\s/g, "")}`,
       };
 
       await profilesService.updateProfile(profile.id, updateData);
       console.log("Profile updated successfully");
 
+      // Dispatch custom event for real-time updates
+      window.dispatchEvent(
+        new CustomEvent("profileUpdated", {
+          detail: {
+            profileId: profile.id,
+            updatedData: updateData,
+            timestamp: new Date().toISOString(),
+          },
+        })
+      );
+
       // Refresh the profile in auth context to update UI
       await refreshProfile();
 
+      // Clear validation errors and close modal
+      setValidationErrors({});
       setIsProfileModalOpen(false);
+
+      toast.success("Profile updated successfully!");
     } catch (error) {
       console.error("Failed to save profile:", error);
-      // Show error message to user - you could add a toast notification here
+      toast.error("Failed to save profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
-  }, [profileFormData, profile, refreshProfile]);
+  }, [profileFormData, profile, refreshProfile, validateForm]);
 
-  const handleInputChange = useCallback((field: string, value: string) => {
-    setProfileFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  }, []);
+  const handleInputChange = useCallback(
+    (field: string, value: string) => {
+      let processedValue = value;
+
+      // Format contact number as user types
+      if (field === "contactNumber") {
+        // Remove all non-digits
+        const digitsOnly = value.replace(/\D/g, "");
+
+        // Only keep digits that would form a valid Philippine mobile number
+        if (digitsOnly.length <= 10) {
+          // Format as: 9XX XXX XXXX
+          if (digitsOnly.length >= 4) {
+            processedValue = digitsOnly.slice(0, 3) + " " + digitsOnly.slice(3);
+          }
+          if (digitsOnly.length >= 7) {
+            processedValue =
+              digitsOnly.slice(0, 3) +
+              " " +
+              digitsOnly.slice(3, 6) +
+              " " +
+              digitsOnly.slice(6);
+          }
+          if (digitsOnly.length < 4) {
+            processedValue = digitsOnly;
+          }
+        } else {
+          // Don't allow more than 10 digits
+          return;
+        }
+      }
+
+      setProfileFormData((prev) => ({
+        ...prev,
+        [field]: processedValue,
+      }));
+
+      // Clear validation error for this field when user starts typing
+      if (validationErrors[field]) {
+        setValidationErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    },
+    [validationErrors]
+  );
 
   // Generate user initials from profile
   const getUserInitials = useCallback(() => {
@@ -248,7 +402,7 @@ export function NavUser({
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName-header">First Name</Label>
+                      <Label htmlFor="firstName-header">First Name *</Label>
                       <Input
                         id="firstName-header"
                         value={profileFormData.firstName}
@@ -256,10 +410,18 @@ export function NavUser({
                           handleInputChange("firstName", e.target.value)
                         }
                         placeholder="Enter first name"
+                        className={
+                          validationErrors.firstName ? "border-red-500" : ""
+                        }
                       />
+                      {validationErrors.firstName && (
+                        <p className="text-sm text-red-500">
+                          {validationErrors.firstName}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName-header">Last Name</Label>
+                      <Label htmlFor="lastName-header">Last Name *</Label>
                       <Input
                         id="lastName-header"
                         value={profileFormData.lastName}
@@ -267,7 +429,15 @@ export function NavUser({
                           handleInputChange("lastName", e.target.value)
                         }
                         placeholder="Enter last name"
+                        className={
+                          validationErrors.lastName ? "border-red-500" : ""
+                        }
                       />
+                      {validationErrors.lastName && (
+                        <p className="text-sm text-red-500">
+                          {validationErrors.lastName}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -285,7 +455,7 @@ export function NavUser({
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="birthDate-header">Birth Date</Label>
+                      <Label htmlFor="birthDate-header">Birth Date *</Label>
                       <Input
                         id="birthDate-header"
                         type="date"
@@ -293,7 +463,15 @@ export function NavUser({
                         onChange={(e) =>
                           handleInputChange("birthDate", e.target.value)
                         }
+                        className={
+                          validationErrors.birthDate ? "border-red-500" : ""
+                        }
                       />
+                      {validationErrors.birthDate && (
+                        <p className="text-sm text-red-500">
+                          {validationErrors.birthDate}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="gender-header">Gender</Label>
@@ -311,18 +489,33 @@ export function NavUser({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contactNumber-header">Contact Number</Label>
-                    <Input
-                      id="contactNumber-header"
-                      value={profileFormData.contactNumber}
-                      onChange={(e) =>
-                        handleInputChange("contactNumber", e.target.value)
-                      }
-                      placeholder="Enter contact number"
-                    />
+                    <Label htmlFor="contactNumber-header">
+                      Contact Number *
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
+                        +63
+                      </span>
+                      <Input
+                        id="contactNumber-header"
+                        value={profileFormData.contactNumber}
+                        onChange={(e) =>
+                          handleInputChange("contactNumber", e.target.value)
+                        }
+                        placeholder="9XX XXX XXXX"
+                        className={`pl-12 ${
+                          validationErrors.contactNumber ? "border-red-500" : ""
+                        }`}
+                      />
+                    </div>
+                    {validationErrors.contactNumber && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.contactNumber}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="address-header">Address</Label>
+                    <Label htmlFor="address-header">Address *</Label>
                     <Input
                       id="address-header"
                       value={profileFormData.address}
@@ -330,7 +523,15 @@ export function NavUser({
                         handleInputChange("address", e.target.value)
                       }
                       placeholder="Enter address"
+                      className={
+                        validationErrors.address ? "border-red-500" : ""
+                      }
                     />
+                    {validationErrors.address && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.address}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex justify-end space-x-2 pt-4 border-t border-border/50">
@@ -441,7 +642,7 @@ export function NavUser({
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName">First Name *</Label>
                     <Input
                       id="firstName"
                       value={profileFormData.firstName}
@@ -449,10 +650,18 @@ export function NavUser({
                         handleInputChange("firstName", e.target.value)
                       }
                       placeholder="Enter first name"
+                      className={
+                        validationErrors.firstName ? "border-red-500" : ""
+                      }
                     />
+                    {validationErrors.firstName && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.firstName}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName">Last Name *</Label>
                     <Input
                       id="lastName"
                       value={profileFormData.lastName}
@@ -460,7 +669,15 @@ export function NavUser({
                         handleInputChange("lastName", e.target.value)
                       }
                       placeholder="Enter last name"
+                      className={
+                        validationErrors.lastName ? "border-red-500" : ""
+                      }
                     />
+                    {validationErrors.lastName && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.lastName}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -476,7 +693,7 @@ export function NavUser({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="birthDate">Birth Date</Label>
+                    <Label htmlFor="birthDate">Birth Date *</Label>
                     <Input
                       id="birthDate"
                       type="date"
@@ -484,7 +701,15 @@ export function NavUser({
                       onChange={(e) =>
                         handleInputChange("birthDate", e.target.value)
                       }
+                      className={
+                        validationErrors.birthDate ? "border-red-500" : ""
+                      }
                     />
+                    {validationErrors.birthDate && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.birthDate}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gender">Gender</Label>
@@ -502,18 +727,31 @@ export function NavUser({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="contactNumber">Contact Number</Label>
-                  <Input
-                    id="contactNumber"
-                    value={profileFormData.contactNumber}
-                    onChange={(e) =>
-                      handleInputChange("contactNumber", e.target.value)
-                    }
-                    placeholder="Enter contact number"
-                  />
+                  <Label htmlFor="contactNumber">Contact Number *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
+                      +63
+                    </span>
+                    <Input
+                      id="contactNumber"
+                      value={profileFormData.contactNumber}
+                      onChange={(e) =>
+                        handleInputChange("contactNumber", e.target.value)
+                      }
+                      placeholder="9XX XXX XXXX"
+                      className={`pl-12 ${
+                        validationErrors.contactNumber ? "border-red-500" : ""
+                      }`}
+                    />
+                  </div>
+                  {validationErrors.contactNumber && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.contactNumber}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address">Address *</Label>
                   <Input
                     id="address"
                     value={profileFormData.address}
@@ -521,7 +759,13 @@ export function NavUser({
                       handleInputChange("address", e.target.value)
                     }
                     placeholder="Enter address"
+                    className={validationErrors.address ? "border-red-500" : ""}
                   />
+                  {validationErrors.address && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.address}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex justify-end space-x-2 pt-4 border-t border-border/50">

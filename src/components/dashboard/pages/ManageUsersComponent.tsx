@@ -103,9 +103,28 @@ export function ManageUsersComponent() {
     loadUsers();
   }, []);
 
-  const loadUsers = async () => {
+  // Listen for profile updates and auto-refresh users list
+  useEffect(() => {
+    const handleProfileUpdate = (event: CustomEvent) => {
+      console.log("📊 Profile updated event received:", event.detail);
+      // Auto-refresh users list when any profile is updated
+      loadUsers(true); // Pass true to skip loading state for smoother UX
+    };
+
+    // Add event listener for profile updates
+    window.addEventListener("profileUpdated", handleProfileUpdate as EventListener);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate as EventListener);
+    };
+  }, []);
+
+  const loadUsers = async (skipLoadingState = false) => {
     try {
-      setLoading(true);
+      if (!skipLoadingState) {
+        setLoading(true);
+      }
       setError(null);
 
       // Use the profiles endpoint directly since that's what the backend provides
@@ -289,7 +308,7 @@ export function ManageUsersComponent() {
         </div>
         <div className="text-gray-600">{error}</div>
         <button
-          onClick={loadUsers}
+          onClick={() => loadUsers()}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
           Retry
         </button>
@@ -317,7 +336,7 @@ export function ManageUsersComponent() {
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
         onStatusToggle={handleToggleUserStatus}
-        onRefresh={loadUsers}
+        onRefresh={() => loadUsers()}
         searchPlaceholder="Search users..."
         addButtonText="Add User"
         editModalTitle="Edit User"

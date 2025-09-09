@@ -27,11 +27,17 @@ import { toast } from "sonner";
 interface ProfileCompletionModalProps {
   isOpen: boolean;
   onClose?: () => void;
+  showButton?: boolean;
+  buttonText?: string;
+  onButtonClick?: () => void;
 }
 
 export default function ProfileCompletionModal({
   isOpen,
   onClose,
+  showButton = false,
+  buttonText = "Complete Profile",
+  onButtonClick,
 }: ProfileCompletionModalProps) {
   const { user, refreshProfile } = useAuth();
   const router = useRouter();
@@ -147,141 +153,170 @@ export default function ProfileCompletionModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !showButton) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <Card className="w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-2 sm:mx-4">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg sm:text-xl">
-            Complete Your Profile
-          </CardTitle>
-          <CardDescription className="text-sm sm:text-base">
-            Before you can access the system, please complete your profile
-            information. This information is required for all users.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 sm:px-6">
-          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name *</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    handleInputChange("firstName", e.target.value)
-                  }
-                  placeholder="Enter your first name"
-                  required
-                  disabled={loading}
-                  className="text-sm sm:text-base"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name *</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    handleInputChange("lastName", e.target.value)
-                  }
-                  placeholder="Enter your last name"
-                  required
-                  disabled={loading}
-                  className="text-sm sm:text-base"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contactNumber">Phone Number *</Label>
-              <Input
-                id="contactNumber"
-                type="tel"
-                value={formData.contactNumber}
-                onChange={(e) =>
-                  handleInputChange("contactNumber", e.target.value)
-                }
-                placeholder="Enter your phone number"
-                required
-                disabled={loading}
-                className="text-sm sm:text-base"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Address *</Label>
-              <Input
-                id="address"
-                type="text"
-                value={formData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Enter your address"
-                required
-                disabled={loading}
-                className="text-sm sm:text-base"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="birthDate">Date of Birth *</Label>
-                <Input
-                  id="birthDate"
-                  type="date"
-                  value={formData.birthDate}
-                  onChange={(e) =>
-                    handleInputChange("birthDate", e.target.value)
-                  }
-                  required
-                  disabled={loading}
-                  className="text-sm sm:text-base"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gender *</Label>
-                <Select
-                  value={formData.gender}
-                  onValueChange={(value) =>
-                    handleInputChange("gender", value as Gender)
-                  }
-                  disabled={loading}>
-                  <SelectTrigger className="text-sm sm:text-base">
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={Gender.MALE}>Male</SelectItem>
-                    <SelectItem value={Gender.FEMALE}>Female</SelectItem>
-                    <SelectItem value={Gender.OTHER}>Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4 pb-2">
+    <>
+      {/* Redirect Button */}
+      {showButton && !isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-xl">Profile Setup Required</CardTitle>
+              <CardDescription>
+                Please complete your profile to continue using the system.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center pb-6">
               <Button
-                type="button"
-                variant="outline"
-                onClick={handleSkip}
-                disabled={loading}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base">
-                Skip for now
+                onClick={onButtonClick}
+                className="w-full sm:w-auto px-6 py-2"
+                size="lg">
+                {buttonText}
               </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base">
-                {loading ? "Creating Profile..." : "Complete Profile"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Profile Completion Modal */}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <Card className="w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-2 sm:mx-4">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg sm:text-xl">
+                Complete Your Profile
+              </CardTitle>
+              <CardDescription className="text-sm sm:text-base">
+                Before you can access the system, please complete your profile
+                information. This information is required for all users.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        handleInputChange("firstName", e.target.value)
+                      }
+                      placeholder="Enter your first name"
+                      required
+                      disabled={loading}
+                      className="text-sm sm:text-base"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      value={formData.lastName}
+                      onChange={(e) =>
+                        handleInputChange("lastName", e.target.value)
+                      }
+                      placeholder="Enter your last name"
+                      required
+                      disabled={loading}
+                      className="text-sm sm:text-base"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contactNumber">Phone Number *</Label>
+                  <Input
+                    id="contactNumber"
+                    type="tel"
+                    value={formData.contactNumber}
+                    onChange={(e) =>
+                      handleInputChange("contactNumber", e.target.value)
+                    }
+                    placeholder="Enter your phone number"
+                    required
+                    disabled={loading}
+                    className="text-sm sm:text-base"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address *</Label>
+                  <Input
+                    id="address"
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) =>
+                      handleInputChange("address", e.target.value)
+                    }
+                    placeholder="Enter your address"
+                    required
+                    disabled={loading}
+                    className="text-sm sm:text-base"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate">Date of Birth *</Label>
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      value={formData.birthDate}
+                      onChange={(e) =>
+                        handleInputChange("birthDate", e.target.value)
+                      }
+                      required
+                      disabled={loading}
+                      className="text-sm sm:text-base"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender *</Label>
+                    <Select
+                      value={formData.gender}
+                      onValueChange={(value) =>
+                        handleInputChange("gender", value as Gender)
+                      }
+                      disabled={loading}>
+                      <SelectTrigger className="text-sm sm:text-base">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={Gender.MALE}>Male</SelectItem>
+                        <SelectItem value={Gender.FEMALE}>Female</SelectItem>
+                        <SelectItem value={Gender.OTHER}>Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4 pb-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSkip}
+                    disabled={loading}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base">
+                    Skip for now
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base">
+                    {loading ? "Creating Profile..." : "Complete Profile"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </>
   );
 }
