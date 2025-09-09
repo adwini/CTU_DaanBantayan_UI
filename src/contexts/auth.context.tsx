@@ -214,7 +214,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           // If we have valid cached auth data, use it immediately
           if (parsed.isAuthenticated && parsed.user) {
-            console.log("✅ Using cached auth state, attempting verification");
+            console.log("✅ Using cached auth state without verification");
             dispatch({
               type: "LOGIN_SUCCESS",
               payload: {
@@ -222,30 +222,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 profile: parsed.profile || null,
               },
             });
-
-            // Try to verify in background - if it fails, keep cached state but warn user
-            try {
-              const authStatus = await authService.checkAuthStatus();
-              if (authStatus.isAuthenticated && authStatus.user) {
-                console.log("✅ Background verification successful");
-                dispatch({
-                  type: "LOGIN_SUCCESS",
-                  payload: {
-                    user: authStatus.user,
-                    profile: authStatus.profile || null,
-                  },
-                });
-              } else {
-                console.log(
-                  "⚠️ Session may be expired, but keeping cached state"
-                );
-              }
-            } catch (error) {
-              console.log(
-                "⚠️ Background verification failed, but keeping cached state"
-              );
-              // Don't logout - keep the cached state active
-            }
             return;
           }
         }
@@ -260,89 +236,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     dispatch({ type: "SET_LOADING", payload: false });
   }, []);
 
-  // Background auth verification that doesn't affect UI
-  const verifyAuthStatusInBackground = useCallback(async () => {
-    try {
-      console.log("🔍 Background auth verification...");
-      const authStatus = await authService.checkAuthStatus();
-
-      if (authStatus.isAuthenticated && authStatus.user) {
-        console.log("✅ Background verification successful, updating state");
-        dispatch({
-          type: "LOGIN_SUCCESS",
-          payload: {
-            user: authStatus.user,
-            profile: authStatus.profile || null,
-          },
-        });
-      } else {
-        console.log("⚠️ Background verification failed, keeping cached state");
-        // Don't logout in background verification
-      }
-    } catch (error) {
-      console.log(
-        "⚠️ Background auth verification failed, keeping cached state"
-      );
-      // Don't logout in background verification
-    }
-  }, []);
-
-  // Verify authentication status with the server
-  const verifyAuthStatus = useCallback(async () => {
-    try {
-      console.log("🔍 Verifying auth status with server...");
-
-      const authStatus = await authService.checkAuthStatus();
-      console.log("📊 Auth status response:", authStatus);
-
-      if (authStatus.isAuthenticated && authStatus.user) {
-        console.log("✅ User is authenticated");
-        dispatch({
-          type: "LOGIN_SUCCESS",
-          payload: {
-            user: authStatus.user,
-            profile: authStatus.profile || null,
-          },
-        });
-      } else {
-        console.log("❌ User not authenticated, clearing state");
-        dispatch({ type: "LOGOUT" });
-      }
-    } catch (error) {
-      console.warn("❌ Auth verification failed:", error);
-
-      // 🔧 FIX: Don't logout immediately on verification failure
-      // Check if we have valid cached data from localStorage
-      if (typeof window !== "undefined") {
-        try {
-          const savedState = localStorage.getItem(AUTH_STORAGE_KEY);
-          if (savedState) {
-            const parsed = JSON.parse(savedState);
-            if (parsed.isAuthenticated && parsed.user) {
-              console.log(
-                "🔄 Auth verification failed, but using cached state"
-              );
-              dispatch({
-                type: "LOGIN_SUCCESS",
-                payload: {
-                  user: parsed.user,
-                  profile: parsed.profile || null,
-                },
-              });
-              return; // Don't logout, use cached data
-            }
-          }
-        } catch (storageError) {
-          console.warn("Failed to read cached auth state:", storageError);
-        }
-      }
-
-      // Only logout if no valid cached data exists
-      console.log("❌ No valid cached auth state, logging out");
-      dispatch({ type: "LOGOUT" });
-    }
-  }, []);
-
   // Login function
   const login = useCallback(
     async (credentials: LoginRequest) => {
@@ -353,17 +246,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const loginResponse = await authService.login(credentials);
         console.log("✅ Login successful:", loginResponse);
 
-        // Try to get current user profile after successful login
+        // Try to get current user profile from /api/profiles/me after successful login
         let profile: ProfileResponse | null = null;
+        let needsProfileCompletion = false;
+
         try {
+          console.log("📱 Fetching user profile from /api/profiles/me...");
           profile = await authService.getCurrentUser();
-          console.log("📱 Profile fetched:", profile);
+          console.log("📱 Profile fetched successfully:", profile);
         } catch (profileError) {
           console.warn(
-            "⚠️ Could not fetch user profile (user may need to create one):",
+            "⚠️ Could not fetch user profile - user may need to complete profile:",
             profileError
           );
-          // Continue with login even if profile fetch fails
+          // If profile doesn't exist (404), mark for completion
+          needsProfileCompletion = true;
         }
 
         dispatch({
@@ -374,7 +271,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           },
         });
 
-        // Determine redirect path
+        // If profile is missing, don't redirect yet - let ProfileGuard handle it
+        if (needsProfileCompletion) {
+          console.log(
+            "📝 Profile completion required - staying on current page"
+          );
+          return; // Don't redirect, let ProfileGuard show completion modal
+        }
+
+        // Determine redirect path only if profile exists
         const urlParams = new URLSearchParams(window.location.search);
         const redirectPath =
           urlParams.get("redirect") ||
@@ -416,16 +321,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       console.log("🔄 Refreshing token...");
       await authService.refreshToken(authState.user.id);
-
-      // Re-verify auth status after token refresh
-      await verifyAuthStatus();
+      console.log("✅ Token refresh successful");
     } catch (error) {
       console.error("❌ Token refresh failed:", error);
       dispatch({ type: "LOGOUT" });
     }
-  }, [authState.user?.id, verifyAuthStatus]);
+  }, [authState.user?.id]);
 
-  // Get current user function
+  // Get current user function - only call when explicitly needed
   const getCurrentUser = useCallback(async () => {
     try {
       console.log("👤 Fetching current user...");
@@ -439,11 +342,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
     } catch (error) {
       console.error("❌ Failed to get current user:", error);
-      dispatch({ type: "LOGOUT" });
+      // Don't logout automatically, let user decide
+      throw error;
     }
   }, []);
 
-  // Refresh profile function
+  // Refresh profile function - only call when explicitly needed
   const refreshProfile = useCallback(async () => {
     try {
       console.log("🔄 Refreshing profile...");
@@ -457,101 +361,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Don't logout on profile refresh failure, just log the error
     }
   }, []);
-
-  // Smart profile retry mechanism for server errors
-  const retryProfileFetch = useCallback(async (maxRetries: number = 3) => {
-    console.log("🔄 Starting smart profile retry mechanism...");
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`🔍 Profile fetch attempt ${attempt}/${maxRetries}`);
-        const profile = await authService.getCurrentUser();
-
-        console.log("✅ Profile fetch successful after retry!");
-        dispatch({
-          type: "PROFILE_UPDATE",
-          payload: profile,
-        });
-        return profile; // Success!
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-
-        if (errorMessage.includes("Server error fetching profile")) {
-          console.warn(
-            `⚠️ Server error on attempt ${attempt}/${maxRetries}, retrying in ${
-              attempt * 2
-            }s...`
-          );
-
-          if (attempt < maxRetries) {
-            // Wait with exponential backoff before retrying
-            await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
-            continue;
-          } else {
-            console.error(
-              "🚨 All profile retry attempts failed - server error persists"
-            );
-            // Don't logout, just show a toast/notification to user
-            return null;
-          }
-        } else {
-          // Not a server error (404, 403, etc.) - don't retry
-          console.log(
-            "❌ Profile fetch failed with non-server error:",
-            errorMessage
-          );
-          return null;
-        }
-      }
-    }
-
-    return null;
-  }, []);
-
-  // Auto-retry profile fetch when user is authenticated but profile is missing due to server error
-  useEffect(() => {
-    const autoRetryProfile = async () => {
-      // Only auto-retry if:
-      // 1. User is authenticated
-      // 2. No profile is loaded
-      // 3. We're not currently loading
-      // 4. We have cached user data (indicating this isn't a new user)
-      if (
-        authState.isAuthenticated &&
-        authState.user &&
-        !authState.profile &&
-        !authState.isLoading &&
-        typeof window !== "undefined"
-      ) {
-        const savedState = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (savedState) {
-          try {
-            const parsed = JSON.parse(savedState);
-            if (parsed.profile) {
-              console.log(
-                "🔄 Detected missing profile for authenticated user, attempting retry..."
-              );
-              // Delay the retry slightly to avoid immediate retry loops
-              setTimeout(() => {
-                retryProfileFetch(2); // Try 2 times with backoff
-              }, 3000); // Wait 3 seconds before first retry
-            }
-          } catch (e) {
-            // Ignore parsing errors
-          }
-        }
-      }
-    };
-
-    autoRetryProfile();
-  }, [
-    authState.isAuthenticated,
-    authState.user,
-    authState.profile,
-    authState.isLoading,
-    retryProfileFetch,
-  ]);
 
   // Clear error function
   const clearError = useCallback(() => {

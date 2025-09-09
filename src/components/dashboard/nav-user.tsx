@@ -65,6 +65,7 @@ export function NavUser({
     address: profile?.address || "",
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -78,19 +79,41 @@ export function NavUser({
     }
   }, [logout, router]);
 
-  const handleProfileClick = useCallback(() => {
-    setProfileFormData({
-      firstName: profile?.firstName || "",
-      middleName: profile?.middleName || "",
-      lastName: profile?.lastName || "",
-      gender: (profile?.gender as Gender) || Gender.OTHER,
-      birthDate: profile?.birthDate || "",
-      contactNumber: profile?.contactNumber || "",
-      address: profile?.address || "",
-    });
+  const handleProfileClick = useCallback(async () => {
+    setIsLoadingProfile(true);
+
+    try {
+      // Fetch fresh profile data from /api/profiles/me with JWT token
+      const freshProfile = await profilesService.getMyProfile();
+
+      // Set form data with fresh profile data
+      setProfileFormData({
+        firstName: freshProfile?.firstName || "",
+        middleName: freshProfile?.middleName || "",
+        lastName: freshProfile?.lastName || "",
+        gender: (freshProfile?.gender as Gender) || Gender.OTHER,
+        birthDate: freshProfile?.birthDate || "",
+        contactNumber: freshProfile?.contactNumber || "",
+        address: freshProfile?.address || "",
+      });
+    } catch (error) {
+      console.error("Failed to fetch profile data:", error);
+      // Fallback to cached profile data if API call fails
+      setProfileFormData({
+        firstName: profile?.firstName || "",
+        middleName: profile?.middleName || "",
+        lastName: profile?.lastName || "",
+        gender: (profile?.gender as Gender) || Gender.OTHER,
+        birthDate: profile?.birthDate || "",
+        contactNumber: profile?.contactNumber || "",
+        address: profile?.address || "",
+      });
+    } finally {
+      setIsLoadingProfile(false);
+    }
+
     setIsProfileModalOpen(true);
   }, [profile]);
-
   const handleProfileSave = useCallback(async () => {
     if (!profile?.id) {
       console.error("No profile ID found");
@@ -190,9 +213,11 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={handleProfileClick}>
+              <DropdownMenuItem
+                onClick={handleProfileClick}
+                disabled={isLoadingProfile}>
                 <IconUserCircle />
-                Account
+                {isLoadingProfile ? "Loading..." : "Account"}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -212,102 +237,114 @@ export function NavUser({
                 Update your profile information below.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName-header">First Name</Label>
-                  <Input
-                    id="firstName-header"
-                    value={profileFormData.firstName}
-                    onChange={(e) =>
-                      handleInputChange("firstName", e.target.value)
-                    }
-                    placeholder="Enter first name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName-header">Last Name</Label>
-                  <Input
-                    id="lastName-header"
-                    value={profileFormData.lastName}
-                    onChange={(e) =>
-                      handleInputChange("lastName", e.target.value)
-                    }
-                    placeholder="Enter last name"
-                  />
+            {isLoadingProfile ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-sm text-muted-foreground">
+                  Loading profile data...
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="middleName-header">
-                  Middle Name (Optional)
-                </Label>
-                <Input
-                  id="middleName-header"
-                  value={profileFormData.middleName}
-                  onChange={(e) =>
-                    handleInputChange("middleName", e.target.value)
-                  }
-                  placeholder="Enter middle name"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="birthDate-header">Birth Date</Label>
-                  <Input
-                    id="birthDate-header"
-                    type="date"
-                    value={profileFormData.birthDate}
-                    onChange={(e) =>
-                      handleInputChange("birthDate", e.target.value)
-                    }
-                  />
+            ) : (
+              <>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName-header">First Name</Label>
+                      <Input
+                        id="firstName-header"
+                        value={profileFormData.firstName}
+                        onChange={(e) =>
+                          handleInputChange("firstName", e.target.value)
+                        }
+                        placeholder="Enter first name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName-header">Last Name</Label>
+                      <Input
+                        id="lastName-header"
+                        value={profileFormData.lastName}
+                        onChange={(e) =>
+                          handleInputChange("lastName", e.target.value)
+                        }
+                        placeholder="Enter last name"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="middleName-header">
+                      Middle Name (Optional)
+                    </Label>
+                    <Input
+                      id="middleName-header"
+                      value={profileFormData.middleName}
+                      onChange={(e) =>
+                        handleInputChange("middleName", e.target.value)
+                      }
+                      placeholder="Enter middle name"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="birthDate-header">Birth Date</Label>
+                      <Input
+                        id="birthDate-header"
+                        type="date"
+                        value={profileFormData.birthDate}
+                        onChange={(e) =>
+                          handleInputChange("birthDate", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gender-header">Gender</Label>
+                      <select
+                        id="gender-header"
+                        value={profileFormData.gender}
+                        onChange={(e) =>
+                          handleInputChange("gender", e.target.value)
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value={Gender.MALE}>Male</option>
+                        <option value={Gender.FEMALE}>Female</option>
+                        <option value={Gender.OTHER}>Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contactNumber-header">Contact Number</Label>
+                    <Input
+                      id="contactNumber-header"
+                      value={profileFormData.contactNumber}
+                      onChange={(e) =>
+                        handleInputChange("contactNumber", e.target.value)
+                      }
+                      placeholder="Enter contact number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address-header">Address</Label>
+                    <Input
+                      id="address-header"
+                      value={profileFormData.address}
+                      onChange={(e) =>
+                        handleInputChange("address", e.target.value)
+                      }
+                      placeholder="Enter address"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gender-header">Gender</Label>
-                  <select
-                    id="gender-header"
-                    value={profileFormData.gender}
-                    onChange={(e) =>
-                      handleInputChange("gender", e.target.value)
-                    }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                    <option value={Gender.MALE}>Male</option>
-                    <option value={Gender.FEMALE}>Female</option>
-                    <option value={Gender.OTHER}>Other</option>
-                  </select>
+                <div className="flex justify-end space-x-2 pt-4 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsProfileModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleProfileSave} disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contactNumber-header">Contact Number</Label>
-                <Input
-                  id="contactNumber-header"
-                  value={profileFormData.contactNumber}
-                  onChange={(e) =>
-                    handleInputChange("contactNumber", e.target.value)
-                  }
-                  placeholder="Enter contact number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address-header">Address</Label>
-                <Input
-                  id="address-header"
-                  value={profileFormData.address}
-                  onChange={(e) => handleInputChange("address", e.target.value)}
-                  placeholder="Enter address"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2 pt-4 border-t border-border/50">
-              <Button
-                variant="outline"
-                onClick={() => setIsProfileModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleProfileSave} disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
       </>
@@ -359,9 +396,11 @@ export function NavUser({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem onClick={handleProfileClick}>
+                <DropdownMenuItem
+                  onClick={handleProfileClick}
+                  disabled={isLoadingProfile}>
                   <IconUserCircle />
-                  Account
+                  {isLoadingProfile ? "Loading..." : "Account"}
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <IconCreditCard />
@@ -391,98 +430,112 @@ export function NavUser({
               Update your profile information below.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  value={profileFormData.firstName}
-                  onChange={(e) =>
-                    handleInputChange("firstName", e.target.value)
-                  }
-                  placeholder="Enter first name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  value={profileFormData.lastName}
-                  onChange={(e) =>
-                    handleInputChange("lastName", e.target.value)
-                  }
-                  placeholder="Enter last name"
-                />
+          {isLoadingProfile ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-sm text-muted-foreground">
+                Loading profile data...
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="middleName">Middle Name (Optional)</Label>
-              <Input
-                id="middleName"
-                value={profileFormData.middleName}
-                onChange={(e) =>
-                  handleInputChange("middleName", e.target.value)
-                }
-                placeholder="Enter middle name"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="birthDate">Birth Date</Label>
-                <Input
-                  id="birthDate"
-                  type="date"
-                  value={profileFormData.birthDate}
-                  onChange={(e) =>
-                    handleInputChange("birthDate", e.target.value)
-                  }
-                />
+          ) : (
+            <>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      value={profileFormData.firstName}
+                      onChange={(e) =>
+                        handleInputChange("firstName", e.target.value)
+                      }
+                      placeholder="Enter first name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={profileFormData.lastName}
+                      onChange={(e) =>
+                        handleInputChange("lastName", e.target.value)
+                      }
+                      placeholder="Enter last name"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="middleName">Middle Name (Optional)</Label>
+                  <Input
+                    id="middleName"
+                    value={profileFormData.middleName}
+                    onChange={(e) =>
+                      handleInputChange("middleName", e.target.value)
+                    }
+                    placeholder="Enter middle name"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate">Birth Date</Label>
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      value={profileFormData.birthDate}
+                      onChange={(e) =>
+                        handleInputChange("birthDate", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender</Label>
+                    <select
+                      id="gender"
+                      value={profileFormData.gender}
+                      onChange={(e) =>
+                        handleInputChange("gender", e.target.value)
+                      }
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                      <option value={Gender.MALE}>Male</option>
+                      <option value={Gender.FEMALE}>Female</option>
+                      <option value={Gender.OTHER}>Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactNumber">Contact Number</Label>
+                  <Input
+                    id="contactNumber"
+                    value={profileFormData.contactNumber}
+                    onChange={(e) =>
+                      handleInputChange("contactNumber", e.target.value)
+                    }
+                    placeholder="Enter contact number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={profileFormData.address}
+                    onChange={(e) =>
+                      handleInputChange("address", e.target.value)
+                    }
+                    placeholder="Enter address"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gender</Label>
-                <select
-                  id="gender"
-                  value={profileFormData.gender}
-                  onChange={(e) => handleInputChange("gender", e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                  <option value={Gender.MALE}>Male</option>
-                  <option value={Gender.FEMALE}>Female</option>
-                  <option value={Gender.OTHER}>Other</option>
-                </select>
+              <div className="flex justify-end space-x-2 pt-4 border-t border-border/50">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsProfileModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleProfileSave} disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="contactNumber">Contact Number</Label>
-              <Input
-                id="contactNumber"
-                value={profileFormData.contactNumber}
-                onChange={(e) =>
-                  handleInputChange("contactNumber", e.target.value)
-                }
-                placeholder="Enter contact number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                value={profileFormData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Enter address"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end space-x-2 pt-4 border-t border-border/50">
-            <Button
-              variant="outline"
-              onClick={() => setIsProfileModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleProfileSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>

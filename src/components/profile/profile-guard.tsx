@@ -20,14 +20,32 @@ export default function ProfileGuard({ children }: ProfileGuardProps) {
   useEffect(() => {
     // Only check for profile completion if user is authenticated and not loading
     if (authState.isAuthenticated && !authState.isLoading && user) {
-      // If user is logged in but doesn't have a complete profile, show modal
-      if (!isProfileComplete) {
+      // If user is authenticated but has no profile, they need to complete it
+      if (!isProfileComplete && profile === null) {
+        console.log("📝 User needs to complete profile - showing modal");
         setShowModal(true);
-      } else {
+        return;
+      }
+
+      // If profile exists and is complete, hide modal
+      if (isProfileComplete && profile) {
+        console.log("✅ Profile is complete - hiding modal");
         setShowModal(false);
+        return;
       }
     }
-  }, [authState.isAuthenticated, authState.isLoading, user, isProfileComplete]);
+
+    // If not authenticated or still loading, hide modal
+    if (!authState.isAuthenticated || authState.isLoading) {
+      setShowModal(false);
+    }
+  }, [
+    authState.isAuthenticated,
+    authState.isLoading,
+    user,
+    isProfileComplete,
+    profile,
+  ]);
 
   const handleModalClose = () => {
     // Don't allow closing the modal unless profile is complete

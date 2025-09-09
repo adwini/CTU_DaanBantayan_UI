@@ -8,6 +8,9 @@ import {
   ProfileSearchParams,
   ApiPaginatedResponse,
   ApiSuccessResponse,
+  SystemUser,
+  SystemUsersResponse,
+  UserSearchParams,
 } from "@/types/api";
 import { RegisterRequest, Role } from "@/types/auth";
 
@@ -56,6 +59,38 @@ class UsersService {
         throw new Error(this.getErrorMessage(error));
       }
       throw new Error("Failed to get users");
+    }
+  }
+
+  /**
+   * Get all system users (authentication users) with optional profile data
+   * Requires backend implementation of GET /api/users endpoint
+   */
+  async getAllSystemUsers(
+    params: UserSearchParams = {}
+  ): Promise<SystemUsersResponse> {
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (params.email) queryParams.append("email", params.email);
+      if (params.role) queryParams.append("role", params.role);
+      if (params.name) queryParams.append("name", params.name);
+      if (params.page !== undefined)
+        queryParams.append("page", params.page.toString());
+      if (params.size !== undefined)
+        queryParams.append("size", params.size.toString());
+
+      const url = `/api/users${
+        queryParams.toString() ? `?${queryParams.toString()}` : ""
+      }`;
+
+      const response = await apiClient.get<SystemUsersResponse>(url);
+      return response.data;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw new Error(this.getErrorMessage(error));
+      }
+      throw new Error("Failed to get system users");
     }
   }
 

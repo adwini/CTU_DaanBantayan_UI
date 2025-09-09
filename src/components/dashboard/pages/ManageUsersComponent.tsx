@@ -10,7 +10,7 @@ import {
 } from "../DataManagementTable";
 import { usersService } from "@/services/users.service";
 import { profilesService } from "@/services/profiles.service";
-import { Profile } from "@/types/api";
+import { Profile, SystemUser } from "@/types/api";
 import { Role } from "@/types/auth";
 import { Gender } from "@/types/api";
 import { TableLoading } from "@/components/utils";
@@ -108,7 +108,7 @@ export function ManageUsersComponent() {
       setLoading(true);
       setError(null);
 
-      // Use the proper getAllUsers method instead of profilesService
+      // Use the profiles endpoint directly since that's what the backend provides
       const response = await usersService.getAllUsers({ size: 100 });
       console.log("📊 Raw API Response:", JSON.stringify(response, null, 2));
 
@@ -119,29 +119,30 @@ export function ManageUsersComponent() {
 
       console.log("📊 Number of users:", response.content.length);
 
-      // Transform all users (whether they have profiles or not)
+      // Transform profiles to UI format - handling the new backend structure
       const transformedUsers: User[] = response.content.map(
         (profile: Profile) => {
-          // Check if user has profile data
-          const hasProfile = profile.firstName && profile.lastName;
-          const displayName = hasProfile
+          // Backend uses 'userEntity' instead of 'user'
+          const userEntity = profile.userEntity || profile.user; // Fallback to 'user' for compatibility
+          const hasCompleteProfile = profile.firstName && profile.lastName;
+          const displayName = hasCompleteProfile
             ? `${profile.firstName} ${profile.lastName}`
-            : profile.user?.email || "No Name";
+            : userEntity?.email || "No Name";
 
           console.log(`📊 User:`, {
-            id: profile?.id,
-            email: profile?.user?.email,
-            role: profile?.user?.role,
-            hasProfile: hasProfile,
+            id: profile.id,
+            email: userEntity?.email,
+            role: userEntity?.role,
+            hasCompleteProfile: hasCompleteProfile,
             displayName: displayName,
           });
 
           return {
             id: parseInt(profile.id),
             name: displayName,
-            email: profile.user?.email || "",
-            role: profile.user?.role || "",
-            status: hasProfile ? "active" : "pending_profile",
+            email: userEntity?.email || "",
+            role: userEntity?.role || "",
+            status: hasCompleteProfile ? "active" : "pending_profile",
           };
         }
       );

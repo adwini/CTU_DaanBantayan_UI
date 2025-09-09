@@ -42,9 +42,12 @@ class ProfilesService {
     profileData: UpdateProfileRequest
   ): Promise<string> {
     try {
+      // Remove id from request body since it's in the URL path
+      const { id: _, ...updateData } = profileData;
+
       const response = await apiClient.put<ApiSuccessResponse>(
         `/api/profiles/${id}`,
-        profileData
+        updateData
       );
       return response.data.message;
     } catch (error) {
@@ -67,6 +70,21 @@ class ProfilesService {
         throw new Error(this.getErrorMessage(error));
       }
       throw new Error("Failed to get profile");
+    }
+  }
+
+  /**
+   * Get current user's profile from /api/profiles endpoint (with JWT token)
+   */
+  async getCurrentUserProfile(): Promise<Profile> {
+    try {
+      const response = await apiClient.get<Profile>("/api/profiles");
+      return response.data;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw new Error(this.getErrorMessage(error));
+      }
+      throw new Error("Failed to get current user profile");
     }
   }
 

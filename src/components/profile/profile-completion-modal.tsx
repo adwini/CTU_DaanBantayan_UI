@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,6 +34,7 @@ export default function ProfileCompletionModal({
   onClose,
 }: ProfileCompletionModalProps) {
   const { user, refreshProfile } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateProfileRequest>({
     firstName: "",
@@ -51,6 +53,34 @@ export default function ProfileCompletionModal({
       ...prev,
       [field]: value,
     }));
+  };
+
+  // Helper function to get redirect path based on user role
+  const getRedirectPath = (role: string): string => {
+    switch (role) {
+      case "ADMIN":
+        return "/admin-dashboard";
+      case "TEACHER":
+        return "/teacher-dashboard";
+      case "STUDENT":
+        return "/student-dashboard";
+      default:
+        return "/admin-dashboard"; // Default fallback
+    }
+  };
+
+  // Handle skip button - allow user to continue without profile
+  const handleSkip = () => {
+    if (onClose) {
+      onClose();
+    }
+
+    // Redirect to appropriate dashboard even without profile
+    if (user?.role) {
+      const redirectPath = getRedirectPath(user.role);
+      console.log("⏭️ Profile skipped - redirecting to:", redirectPath);
+      router.push(redirectPath);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,13 +103,41 @@ export default function ProfileCompletionModal({
       // Create the profile
       await profilesService.createProfile(formData);
 
-      // Refresh the profile in auth context
-      await refreshProfile();
+      // Try to refresh the profile in auth context
+      try {
+        await refreshProfile();
+        toast.success("Profile created successfully!");
 
-      toast.success("Profile created successfully!");
+        // Close modal first
+        if (onClose) {
+          onClose();
+        }
 
-      if (onClose) {
-        onClose();
+        // Redirect to appropriate dashboard based on user role
+        if (user?.role) {
+          const redirectPath = getRedirectPath(user.role);
+          console.log("🚀 Profile completed - redirecting to:", redirectPath);
+          router.push(redirectPath);
+        }
+      } catch (refreshError) {
+        // If profile refresh fails (e.g., backend down), still show success
+        // but with a note about potential sync issues
+        console.warn(
+          "Profile created but couldn't refresh auth context:",
+          refreshError
+        );
+        toast.success(
+          "Profile created successfully! Please refresh the page if needed."
+        );
+
+        // Still try to redirect even if refresh failed
+        if (onClose) {
+          onClose();
+        }
+        if (user?.role) {
+          const redirectPath = getRedirectPath(user.role);
+          router.push(redirectPath);
+        }
       }
     } catch (error) {
       console.error("Failed to create profile:", error);
@@ -205,7 +263,15 @@ export default function ProfileCompletionModal({
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4 pb-2">
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4 pb-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSkip}
+                disabled={loading}
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base">
+                Skip for now
+              </Button>
               <Button
                 type="submit"
                 disabled={loading}

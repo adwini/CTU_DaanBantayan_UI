@@ -87,6 +87,16 @@ export interface Profile extends BaseEntity {
     email: string;
     role: string;
   };
+  // Backend compatibility - actual response uses 'userEntity'
+  userEntity?: {
+    id: string;
+    email: string;
+    password: string;
+    membershipCode: string;
+    role: string;
+    createdAt: string;
+    updatedAt: string | null;
+  };
 }
 
 export interface CreateProfileRequest {
@@ -100,7 +110,7 @@ export interface CreateProfileRequest {
 }
 
 export interface UpdateProfileRequest extends CreateProfileRequest {
-  id: string;
+  id?: string; // Optional since it's in URL path, not request body
 }
 
 export interface ProfileSearchParams {
@@ -189,4 +199,40 @@ export interface TeacherLoadStatusData {
   month: string;
   assigned: number;
   pending: number;
+}
+
+// System User interfaces for user management
+export interface SystemUser {
+  id: string;
+  email: string;
+  role: string;
+  isActive?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  profile?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    middleName?: string;
+    gender: Gender;
+    birthDate: string;
+    contactNumber: string;
+    address: string;
+  };
+}
+
+export interface SystemUsersResponse {
+  content: SystemUser[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+export interface UserSearchParams {
+  email?: string;
+  role?: string;
+  name?: string;
+  page?: number;
+  size?: number;
 }
