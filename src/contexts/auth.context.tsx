@@ -34,6 +34,45 @@ import { PageLoading } from "@/components/utils";
 // Storage key for persisting auth state
 const AUTH_STORAGE_KEY = "ctu_auth_state";
 
+// Session timeout in milliseconds (24 hours)
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+
+// Configuration for session behavior
+const SESSION_CONFIG = {
+  // Set to true to use sessionStorage (clears on browser close)
+  // Set to false to use localStorage with timeout (persists across browser restarts)
+  //
+  // SOLUTION FOR YOUR ISSUE:
+  // - Set useSessionStorage: true to automatically clear on browser close
+  // - Set useSessionStorage: false to keep current behavior with 24-hour timeout
+  useSessionStorage: true, // ✅ ENABLED: Auto-clear on browser/tab close
+  // Session timeout only applies when using localStorage
+  sessionTimeout: SESSION_TIMEOUT,
+};
+
+// Helper function to get storage object based on configuration
+const getStorage = () => {
+  if (typeof window === "undefined") return null;
+  return SESSION_CONFIG.useSessionStorage ? sessionStorage : localStorage;
+};
+
+// Helper function to check if session is expired
+const isSessionExpired = (timestamp: number): boolean => {
+  if (SESSION_CONFIG.useSessionStorage) return false; // sessionStorage doesn't need timeout
+  return Date.now() - timestamp > SESSION_CONFIG.sessionTimeout;
+};
+
+// Utility function to manually clear all auth data
+export const clearAllAuthData = () => {
+  if (typeof window === "undefined") return;
+
+  // Clear from both localStorage and sessionStorage to be safe
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+
+  console.log("🧹 Manually cleared all auth data");
+};
+
 // Initial state - always return consistent state for SSR
 const getInitialState = (): AuthState => {
   return {
@@ -88,17 +127,21 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         error: null,
       };
 
-      // Persist to localStorage
+      // Persist to storage with timestamp (if using localStorage)
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem(
-            AUTH_STORAGE_KEY,
-            JSON.stringify({
+          const storage = getStorage();
+          if (storage) {
+            const dataToStore = {
               isAuthenticated: true,
               user: action.payload.user,
               profile: action.payload.profile,
-            })
-          );
+              ...(SESSION_CONFIG.useSessionStorage
+                ? {}
+                : { timestamp: Date.now() }),
+            };
+            storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(dataToStore));
+          }
         } catch (error) {
           console.warn("Failed to persist auth state:", error);
         }
@@ -109,7 +152,10 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
     case "LOGIN_FAILURE":
       // Clear storage on login failure
       if (typeof window !== "undefined") {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        const storage = getStorage();
+        if (storage) {
+          storage.removeItem(AUTH_STORAGE_KEY);
+        }
       }
 
       return {
@@ -123,7 +169,10 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
     case "LOGOUT":
       // Clear storage on logout
       if (typeof window !== "undefined") {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        const storage = getStorage();
+        if (storage) {
+          storage.removeItem(AUTH_STORAGE_KEY);
+        }
       }
 
       return {
@@ -140,17 +189,21 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         profile: action.payload,
       };
 
-      // Update storage with new profile
+      // Update storage with new profile and timestamp (if using localStorage)
       if (typeof window !== "undefined" && state.isAuthenticated) {
         try {
-          localStorage.setItem(
-            AUTH_STORAGE_KEY,
-            JSON.stringify({
+          const storage = getStorage();
+          if (storage) {
+            const dataToStore = {
               isAuthenticated: true,
               user: state.user,
               profile: action.payload,
-            })
-          );
+              ...(SESSION_CONFIG.useSessionStorage
+                ? {}
+                : { timestamp: Date.now() }),
+            };
+            storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(dataToStore));
+          }
         } catch (error) {
           console.warn("Failed to persist profile update:", error);
         }
@@ -204,17 +257,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const initializeAuth = useCallback(async () => {
     dispatch({ type: "INIT_AUTH" });
 
-    // Restore from localStorage if available (client-side only)
+    // Restore from storage if available (client-side only)
     if (typeof window !== "undefined") {
       try {
-        const savedState = localStorage.getItem(AUTH_STORAGE_KEY);
+        const storage = getStorage();
+        const savedState = storage?.getItem(AUTH_STORAGE_KEY);
         if (savedState) {
           const parsed = JSON.parse(savedState);
-          console.log("🔄 Restoring auth state from localStorage:", parsed);
+          console.log("🔄 Checking cached auth state:", parsed);
 
-          // If we have valid cached auth data, use it immediately
+          // Check if session has expired (only for localStorage)
+          if (
+            !SESSION_CONFIG.useSessionStorage &&
+            parsed.timestamp &&
+            isSessionExpired(parsed.timestamp)
+          ) {
+            console.log("⏰ Session expired - clearing auth state");
+            storage?.removeItem(AUTH_STORAGE_KEY);
+            dispatch({ type: "SET_LOADING", payload: false });
+            return;
+          }
+
+          // If we have valid cached auth data and session is not expired, use it
           if (parsed.isAuthenticated && parsed.user) {
-            console.log("✅ Using cached auth state without verification");
+            const sessionType = SESSION_CONFIG.useSessionStorage
+              ? "session"
+              : "persistent";
+            console.log(`✅ Using cached auth state (${sessionType} storage)`);
             dispatch({
               type: "LOGIN_SUCCESS",
               payload: {
@@ -226,8 +295,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         }
       } catch (error) {
-        console.warn("Failed to restore auth state from localStorage:", error);
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        console.warn("Failed to restore auth state from storage:", error);
+        const storage = getStorage();
+        storage?.removeItem(AUTH_STORAGE_KEY);
       }
     }
 
@@ -235,6 +305,64 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Let the app show the landing page or redirect to login naturally
     dispatch({ type: "SET_LOADING", payload: false });
   }, []);
+
+  // Add browser close detection and session management
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Handle browser close/refresh
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Optional: Ask user to confirm leaving if they're logged in
+      if (authState.isAuthenticated) {
+        const message =
+          "Are you sure you want to leave? You will be logged out.";
+        event.returnValue = message;
+        return message;
+      }
+    };
+
+    // Handle visibility change (when user switches tabs or minimizes browser)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Browser tab is hidden - could implement additional security here
+        console.log("👁️ Browser tab hidden");
+      } else {
+        // Browser tab is visible again - check session validity (only for localStorage)
+        console.log("👁️ Browser tab visible");
+        if (!SESSION_CONFIG.useSessionStorage) {
+          const storage = getStorage();
+          const savedState = storage?.getItem(AUTH_STORAGE_KEY);
+          if (savedState) {
+            try {
+              const parsed = JSON.parse(savedState);
+              if (parsed.timestamp && isSessionExpired(parsed.timestamp)) {
+                console.log(
+                  "⏰ Session expired while tab was hidden - logging out"
+                );
+                storage?.removeItem(AUTH_STORAGE_KEY);
+                dispatch({ type: "LOGOUT" });
+              }
+            } catch (error) {
+              console.warn(
+                "Error checking session on visibility change:",
+                error
+              );
+            }
+          }
+        }
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [authState.isAuthenticated]);
 
   // Login function
   const login = useCallback(
