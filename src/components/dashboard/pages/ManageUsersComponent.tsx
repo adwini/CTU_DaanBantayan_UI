@@ -112,11 +112,17 @@ export function ManageUsersComponent() {
     };
 
     // Add event listener for profile updates
-    window.addEventListener("profileUpdated", handleProfileUpdate as EventListener);
+    window.addEventListener(
+      "profileUpdated",
+      handleProfileUpdate as EventListener
+    );
 
     // Cleanup event listener on component unmount
     return () => {
-      window.removeEventListener("profileUpdated", handleProfileUpdate as EventListener);
+      window.removeEventListener(
+        "profileUpdated",
+        handleProfileUpdate as EventListener
+      );
     };
   }, []);
 
