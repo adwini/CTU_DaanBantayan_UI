@@ -16,6 +16,7 @@ import { TableLoading } from "@/components/utils";
 interface Subject extends BaseItem {
   subjectCode: string;
   subjectName: string;
+  uuid?: string; // Store the original UUID from API
 }
 
 // Sample data
@@ -107,21 +108,43 @@ export function ManageSubjectsComponent() {
       console.log("🔄 Loading subjects...");
 
       const apiSubjects = await subjectsService.getAllSubjects();
+      console.log("📊 Raw API response:", apiSubjects);
 
       // Transform API subjects to component subjects
-      const transformedSubjects: Subject[] = apiSubjects.map((apiSubject) => ({
-        id: parseInt(apiSubject.id) || Math.random(),
-        subjectCode: apiSubject.subjectCode,
-        subjectName: apiSubject.name,
-      }));
+      const transformedSubjects: Subject[] = apiSubjects.map((apiSubject) => {
+        console.log("📊 Processing subject:", apiSubject);
+        const transformedId = parseInt(apiSubject.id) || Math.random();
+        console.log(
+          "📊 Transformed ID:",
+          transformedId,
+          "from UUID:",
+          apiSubject.id,
+          "preserved UUID:",
+          apiSubject.id
+        );
+
+        return {
+          id: transformedId,
+          subjectCode: apiSubject.subjectCode,
+          subjectName: apiSubject.name,
+          uuid: apiSubject.id, // Preserve original UUID
+        };
+      });
 
       setSubjects(transformedSubjects);
       console.log("✅ Subjects loaded successfully:", transformedSubjects);
     } catch (error) {
-      console.error("❌ Failed to fetch subjects:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to load subjects"
-      );
+      console.error("❌ Failed to fetch subjects - detailed error:", error);
+
+      // More detailed error information
+      let errorMessage = "Failed to load subjects";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("❌ Error message:", error.message);
+        console.error("❌ Error stack:", error.stack);
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -164,10 +187,12 @@ export function ManageSubjectsComponent() {
       setError(null);
       // Find the current subject
       const currentSubject = subjects.find((s) => s.id === id);
-      if (!currentSubject) return;
+      if (!currentSubject) {
+        throw new Error("Subject not found in local state");
+      }
 
       const updateData = {
-        id: currentSubject.id.toString(),
+        id: currentSubject.uuid || currentSubject.id.toString(), // Use original UUID
         subjectCode:
           (subjectData.subjectCode as string) || currentSubject.subjectCode,
         name: (subjectData.subjectName as string) || currentSubject.subjectName,
@@ -175,38 +200,66 @@ export function ManageSubjectsComponent() {
         updatedAt: new Date().toISOString().slice(0, 19),
       };
 
+      console.log("📝 Using UUID for update:", currentSubject.uuid);
+      console.log("📝 Update data:", updateData);
+
+      console.log("📝 Updating subject with data:", updateData);
+
       const result = await subjectsService.updateSubject(updateData);
-      console.log("Subject updated:", result);
+      console.log("✅ Subject updated successfully:", result);
 
       // Refresh the subjects list
       await loadSubjects();
     } catch (error) {
-      console.error("Failed to edit subject:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to edit subject"
-      );
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to edit subject"
-      );
+      console.error("❌ Failed to edit subject - detailed error:", error);
+
+      // More detailed error information
+      let errorMessage = "Failed to edit subject";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("❌ Error message:", error.message);
+        console.error("❌ Error stack:", error.stack);
+      }
+
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
   const handleDeleteSubject = async (id: number) => {
     try {
       setError(null);
-      await subjectsService.deleteSubject(id.toString());
-      console.log("Subject deleted:", id);
 
-      // Refresh the subjects list to ensure consistency
+      // Find the subject to get its UUID
+      const subject = subjects.find((s) => s.id === id);
+      if (!subject) {
+        throw new Error("Subject not found in local state");
+      }
+
+      console.log("🗑️ Deleting subject with UUID:", subject.uuid);
+      console.log("🗑️ Subject details:", subject);
+
+      const deleteId = subject.uuid || subject.id.toString();
+      console.log("🗑️ Final delete ID:", deleteId);
+
+      await subjectsService.deleteSubject(deleteId);
+      console.log("✅ Subject deleted successfully:", deleteId);
+
+      // Refresh the subjects list
       await loadSubjects();
     } catch (error) {
-      console.error("Failed to delete subject:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to delete subject"
-      );
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to delete subject"
-      );
+      console.error("❌ Failed to delete subject - detailed error:", error);
+
+      // More detailed error information
+      let errorMessage = "Failed to delete subject";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("❌ Error message:", error.message);
+        console.error("❌ Error stack:", error.stack);
+      }
+
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 

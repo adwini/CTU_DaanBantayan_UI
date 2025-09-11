@@ -39,16 +39,28 @@ class SubjectsService {
    */
   async updateSubject(subjectData: UpdateSubjectRequest): Promise<string> {
     try {
+      console.log("📝 Updating subject with data:", subjectData);
+      console.log("📝 Making PUT request to: /api/subjects");
+
       const response = await apiClient.put<ApiSuccessResponse>(
         "/api/subjects",
         subjectData
       );
+
+      console.log("✅ Update response:", response);
+      console.log("✅ Update response data:", response.data);
+
       return response.data.message;
     } catch (error) {
+      console.error("❌ Update subject failed:", error);
       if (error instanceof ApiError) {
-        throw new Error(this.getErrorMessage(error));
+        console.error("❌ API Error details:", {
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
       }
-      throw new Error("Failed to update subject");
+      throw error;
     }
   }
 
@@ -73,13 +85,25 @@ class SubjectsService {
         queryParams.toString() ? `?${queryParams.toString()}` : ""
       }`;
 
+      console.log("🔄 Making GET request to:", url);
+      console.log("🔄 Query params:", Object.fromEntries(queryParams));
+
       const response = await apiClient.get<ApiPaginatedResponse<Subject>>(url);
+      console.log("📊 Raw API response:", response);
+      console.log("📊 Response data:", response.data);
+      console.log("📊 Response status:", response.status);
+
       return response.data;
     } catch (error) {
+      console.error("❌ searchSubjects failed:", error);
       if (error instanceof ApiError) {
-        throw new Error(this.getErrorMessage(error));
+        console.error("❌ API Error details:", {
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
       }
-      throw new Error("Failed to search subjects");
+      throw error;
     }
   }
 
@@ -88,9 +112,13 @@ class SubjectsService {
    */
   async getAllSubjects(): Promise<Subject[]> {
     try {
+      console.log("🔄 Fetching all subjects...");
       const response = await this.searchSubjects({ size: 1000 });
+      console.log("📊 getAllSubjects response:", response);
+      console.log("📊 Content array:", response.content);
       return response.content;
     } catch (error) {
+      console.error("❌ getAllSubjects failed:", error);
       throw error;
     }
   }
@@ -115,15 +143,27 @@ class SubjectsService {
    */
   async deleteSubject(id: string): Promise<string> {
     try {
+      console.log("🗑️ Making DELETE request to:", `/api/subjects/${id}`);
+      console.log("🗑️ Deleting subject with ID:", id);
+
       const response = await apiClient.delete<ApiSuccessResponse>(
         `/api/subjects/${id}`
       );
+
+      console.log("✅ Delete response:", response);
+      console.log("✅ Delete response data:", response.data);
+
       return response.data.message;
     } catch (error) {
+      console.error("❌ Delete subject failed:", error);
       if (error instanceof ApiError) {
-        throw new Error(this.getErrorMessage(error));
+        console.error("❌ API Error details:", {
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
       }
-      throw new Error("Failed to delete subject");
+      throw error;
     }
   }
 
