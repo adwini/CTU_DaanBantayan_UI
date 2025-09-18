@@ -147,7 +147,7 @@ export function AppSidebar({
                   <span>Grade Monitoring</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
+              {/* <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => handleNavigation("attendance-overview")}
                   className={
@@ -158,7 +158,7 @@ export function AppSidebar({
                   <IconCalendar />
                   <span>Attendance Overview (SKIP)</span>
                 </SidebarMenuButton>
-              </SidebarMenuItem>
+              </SidebarMenuItem> */}
             </SidebarMenu>
           </SidebarGroup>
 
