@@ -98,6 +98,7 @@ export function ManageSubjectsComponent() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
 
   // Load subjects function - used for initial load and refresh
   const loadSubjects = async () => {
@@ -157,6 +158,22 @@ export function ManageSubjectsComponent() {
   const handleAddSubject = async (subject: Omit<Subject, "id">) => {
     try {
       setError(null);
+      // Local duplicate check
+      const duplicate = subjects.find(
+        (s) =>
+          s.subjectCode.trim().toLowerCase() ===
+            String(subject.subjectCode).trim().toLowerCase() ||
+          s.subjectName.trim().toLowerCase() ===
+            String(subject.subjectName).trim().toLowerCase()
+      );
+      if (duplicate) {
+        setError(
+          "A subject with this code or name already exists. Please choose a different code or name."
+        );
+        throw new Error(
+          "A subject with this code or name already exists. Please choose a different code or name."
+        );
+      }
       const newSubjectData = {
         subjectCode: subject.subjectCode as string,
         name: subject.subjectName as string,
@@ -168,13 +185,17 @@ export function ManageSubjectsComponent() {
       // Refresh the subjects list
       await loadSubjects();
     } catch (error) {
-      console.error("Failed to add subject:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to add subject"
-      );
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to add subject"
-      );
+      let errorMessage =
+        error instanceof Error ? error.message : "Failed to add subject";
+      if (
+        errorMessage.includes("already exists") ||
+        errorMessage.includes("duplicate")
+      ) {
+        errorMessage =
+          "A subject with this code or name already exists. Please choose a different code or name.";
+      }
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
@@ -188,6 +209,25 @@ export function ManageSubjectsComponent() {
       const currentSubject = subjects.find((s) => s.id === id);
       if (!currentSubject) {
         throw new Error("Subject not found in local state");
+      }
+      // Local duplicate check (exclude current subject)
+      const duplicate = subjects.find(
+        (s) =>
+          s.id !== id &&
+          (s.subjectCode.trim().toLowerCase() ===
+            (subjectData.subjectCode?.trim().toLowerCase() ||
+              currentSubject.subjectCode.trim().toLowerCase()) ||
+            s.subjectName.trim().toLowerCase() ===
+              (subjectData.subjectName?.trim().toLowerCase() ||
+                currentSubject.subjectName.trim().toLowerCase()))
+      );
+      if (duplicate) {
+        setError(
+          "A subject with this code or name already exists. Please choose a different code or name."
+        );
+        throw new Error(
+          "A subject with this code or name already exists. Please choose a different code or name."
+        );
       }
 
       const updateData = {
@@ -210,22 +250,24 @@ export function ManageSubjectsComponent() {
       // Refresh the subjects list
       await loadSubjects();
     } catch (error) {
-      console.error("❌ Failed to edit subject - detailed error:", error);
-
-      // More detailed error information
-      let errorMessage = "Failed to edit subject";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        console.error("❌ Error message:", error.message);
-        console.error("❌ Error stack:", error.stack);
+      let errorMessage =
+        error instanceof Error ? error.message : "Failed to edit subject";
+      if (
+        errorMessage.includes("already exists") ||
+        errorMessage.includes("duplicate")
+      ) {
+        errorMessage =
+          "A subject with this code or name already exists. Please choose a different code or name.";
       }
-
       setError(errorMessage);
       throw new Error(errorMessage);
     }
   };
 
   const handleDeleteSubject = async (id: number) => {
+    // Add to deleting set to show loading state
+    setDeletingIds(prev => new Set(prev).add(id));
+
     try {
       setError(null);
 
@@ -241,10 +283,11 @@ export function ManageSubjectsComponent() {
       const deleteId = subject.uuid || subject.id.toString();
       console.log("🗑️ Final delete ID:", deleteId);
 
+      // Make the API call
       await subjectsService.deleteSubject(deleteId);
       console.log("✅ Subject deleted successfully:", deleteId);
 
-      // Refresh the subjects list
+      // Only refresh the subjects list after successful deletion
       await loadSubjects();
     } catch (error) {
       console.error("❌ Failed to delete subject - detailed error:", error);
@@ -255,10 +298,32 @@ export function ManageSubjectsComponent() {
         errorMessage = error.message;
         console.error("❌ Error message:", error.message);
         console.error("❌ Error stack:", error.stack);
+
+        // Handle specific error cases
+        if (
+          errorMessage.includes("403") ||
+          errorMessage.toLowerCase().includes("forbidden")
+        ) {
+          errorMessage =
+            "You do not have permission to delete this subject. Please contact your administrator.";
+        } else if (
+          errorMessage.includes("400") ||
+          errorMessage.toLowerCase().includes("bad request")
+        ) {
+          errorMessage =
+            "This subject cannot be deleted as it may be in use by classes, grades, or other records.";
+        }
       }
 
       setError(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      // Remove from deleting set regardless of success/failure
+      setDeletingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 

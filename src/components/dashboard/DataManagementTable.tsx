@@ -35,6 +35,7 @@ import {
   IconDots,
   IconX,
   IconRefresh,
+  IconLoader,
 } from "@tabler/icons-react";
 import {
   DropdownMenu,
@@ -85,7 +86,7 @@ export interface DataManagementTableProps {
   filterOptions?: FilterOption[];
   onAdd?: (item: Omit<BaseItem, "id">) => void;
   onEdit?: (id: number, item: Partial<BaseItem>) => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (id: number) => void | Promise<void>;
   onStatusToggle?: (id: number) => void;
   onRefresh?: () => void | Promise<void>;
   searchPlaceholder?: string;
@@ -131,6 +132,7 @@ export function DataManagementTable({
   const [editingItem, setEditingItem] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deletingItemIds, setDeletingItemIds] = useState<Set<number>>(new Set());
 
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -250,10 +252,31 @@ export function DataManagementTable({
     onStatusToggle?.(itemId);
   };
 
-  const handleDeleteItem = (itemId: number) => {
-    const updatedItems = items.filter((item) => item.id !== itemId);
-    setItems(updatedItems);
-    onDelete?.(itemId);
+  const handleDeleteItem = async (itemId: number) => {
+    if (!onDelete) return;
+
+    // Add to deleting set to show loading state
+    setDeletingItemIds(prev => new Set(prev).add(itemId));
+
+    try {
+      // Call the async delete handler
+      await onDelete(itemId);
+
+      // Only remove from local state after successful deletion
+      const updatedItems = items.filter((item) => item.id !== itemId);
+      setItems(updatedItems);
+    } catch (error) {
+      // If delete fails, don't remove from local state
+      console.error("Delete operation failed:", error);
+      throw error; // Re-throw to let the parent component handle the error
+    } finally {
+      // Remove from deleting set regardless of success/failure
+      setDeletingItemIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
   };
 
   const handleModalClose = (open: boolean) => {
@@ -734,8 +757,16 @@ export function DataManagementTable({
                                 {actions.delete && (
                                   <DropdownMenuItem
                                     variant="destructive"
-                                    onClick={() => handleDeleteItem(item.id)}>
-                                    Delete
+                                    onClick={() => handleDeleteItem(item.id)}
+                                    disabled={deletingItemIds.has(item.id)}>
+                                    {deletingItemIds.has(item.id) ? (
+                                      <>
+                                        <IconLoader className="h-4 w-4 mr-2 animate-spin" />
+                                        Deleting...
+                                      </>
+                                    ) : (
+                                      "Delete"
+                                    )}
                                   </DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>

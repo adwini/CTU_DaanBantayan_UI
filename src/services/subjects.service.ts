@@ -143,11 +143,12 @@ class SubjectsService {
    */
   async deleteSubject(id: string): Promise<string> {
     try {
-      console.log("🗑️ Making DELETE request to:", `/api/subjects/${id}`);
+      console.log("🗑️ Making DELETE request to:", `/api/subjects`);
       console.log("🗑️ Deleting subject with ID:", id);
 
+      // Send ID as query parameter as required by backend
       const response = await apiClient.delete<ApiSuccessResponse>(
-        `/api/subjects/${id}`
+        `/api/subjects?id=${id}`
       );
 
       console.log("✅ Delete response:", response);
