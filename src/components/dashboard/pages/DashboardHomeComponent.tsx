@@ -1,4 +1,4 @@
-import { DataTable } from "@/components/dashboard/data-table";
+// DataTable removed (unused in this component)
 import { SectionCards } from "@/components/dashboard/section-cards";
 import {
   Card,
@@ -37,7 +37,7 @@ import {
   IconChalkboard,
   IconTrendingUp,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { dashboardService } from "@/services/dashboard.service";
 import {
   DashboardStats,
@@ -46,17 +46,7 @@ import {
   TeacherLoadStatusData,
 } from "@/types/api";
 
-interface DashboardHomeProps {
-  data?: Array<{
-    id: number;
-    header: string;
-    type: string;
-    status: string;
-    target: string;
-    limit: string;
-    reviewer: string;
-  }>;
-}
+// DashboardHomeProps removed (not used)
 
 // Dashboard data interfaces
 interface DashboardData {
@@ -81,7 +71,7 @@ interface DashboardData {
     id: string;
     section: string;
     grade: string;
-    adviser: string;
+    adviser: unknown;
     students: number;
     status: string;
   }>;
@@ -267,34 +257,14 @@ const lineChartConfig: ChartConfig = {
   },
 };
 
-export function DashboardHomeComponent({ data }: DashboardHomeProps) {
+export function DashboardHomeComponent() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
-  // Chart configurations
-  const pieChartConfig: ChartConfig = {
-    students: {
-      label: "Students",
-    },
-  };
-
-  const barChartConfig: ChartConfig = {
-    subjects: {
-      label: "Subjects",
-    },
-  };
-
-  const lineChartConfig: ChartConfig = {
-    assigned: {
-      label: "Assigned",
-    },
-    pending: {
-      label: "Pending",
-    },
-  };
+  // Charts are configured inline where used; duplicated local constants removed.
 
   // Fetch dashboard data on component mount
   useEffect(() => {
@@ -355,10 +325,35 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
     return <DashboardLoading text="Loading dashboard data..." />;
   }
 
+  // Helper to safely render a person value which may be a string or an object
+  const formatPerson = (person: unknown) => {
+    if (!person) return "";
+    if (typeof person === "string") return person;
+    if (typeof person === "object") {
+      const p = person as Record<string, unknown>;
+      // prefer firstName + lastName, then name/fullName, then email/userEntity
+      const firstName = (p["firstName"] as string) || "";
+      const lastName = (p["lastName"] as string) || "";
+      const fullName = `${firstName} ${lastName}`.trim();
+      if (fullName) return fullName;
+      const name = p["name"] as string | undefined;
+      if (name) return name;
+      const full = p["fullName"] as string | undefined;
+      if (full) return full;
+      const userEntity = p["userEntity"] as Record<string, unknown> | undefined;
+      if (userEntity) {
+        const ueEmail = userEntity["email"] as string | undefined;
+        if (ueEmail) return ueEmail;
+      }
+      const email = p["email"] as string | undefined;
+      if (email) return email;
+      return "Unknown";
+    }
+    return String(person);
+  };
+
   // Always show dashboard with data (API or dummy)
-  if (!dashboardData) {
-    return null;
-  }
+  if (!dashboardData) return null;
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -398,7 +393,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                         <TableCell>
                           <Badge variant="outline">{subject.grade}</Badge>
                         </TableCell>
-                        <TableCell>{subject.teacher}</TableCell>
+                        <TableCell>{formatPerson(subject.teacher)}</TableCell>
                         <TableCell>{subject.sections}</TableCell>
                         <TableCell>{subject.students}</TableCell>
                       </TableRow>
@@ -436,7 +431,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                     {dashboardData.teacherLoadsOverview.map((load) => (
                       <TableRow key={load.id}>
                         <TableCell className="font-medium">
-                          {load.teacher}
+                          {formatPerson(load.teacher)}
                         </TableCell>
                         <TableCell>{load.subject}</TableCell>
                         <TableCell>
@@ -492,7 +487,7 @@ export function DashboardHomeComponent({ data }: DashboardHomeProps) {
                         <TableCell className="font-medium">
                           <Badge variant="outline">{section.section}</Badge>
                         </TableCell>
-                        <TableCell>{section.adviser}</TableCell>
+                        <TableCell>{formatPerson(section.adviser)}</TableCell>
                         <TableCell>{section.students}</TableCell>
                         <TableCell>8</TableCell>
                         <TableCell>

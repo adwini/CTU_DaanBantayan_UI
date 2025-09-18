@@ -27,7 +27,7 @@ export default function Page() {
   const renderContent = () => {
     switch (activeView) {
       case "dashboard":
-        return <DashboardHomeComponent data={data} />;
+        return <DashboardHomeComponent />;
       case "manage-users-reusable":
         return <ManageUsersReusable />;
       case "manage-sections":
@@ -45,7 +45,7 @@ export default function Page() {
       case "settings":
         return <SettingsComponent />;
       default:
-        return <DashboardHomeComponent data={data} />;
+        return <DashboardHomeComponent />;
     }
   };
 

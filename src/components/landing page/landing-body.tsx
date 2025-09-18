@@ -1,5 +1,6 @@
 "use client";
 import React, { JSX } from "react";
+import Image from "next/image";
 import {
   MotionCTA,
   MotionForText,
@@ -27,9 +28,11 @@ export default function LandingPage(): JSX.Element {
           className="absolute inset-0 z-0 bg-gradient-to-r from-blue-900/80 via-blue-800/50 to-transparent backdrop-blur-xs"
         />
         <MotionForText className="relative z-10 px-6 py-24 max-w-6xl text-white text-center flex flex-col items-center gap-3 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6">
-          <img
+          <Image
             src="/logoadsm-removebg-preview.png"
             alt="Academia de San Martin logo"
+            width={176}
+            height={176}
             className="h-28 sm:h-35 md:h-36 lg:h-40 xl:h-44 w-auto max-w-[95%]"
           />
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-snug drop-shadow-sm">

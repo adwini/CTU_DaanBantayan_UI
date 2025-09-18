@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { authService } from "@/services/auth.service";
 import { profilesService } from "@/services/profiles.service";
 import { subjectsService } from "@/services/subjects.service";
@@ -18,7 +18,8 @@ import { ButtonLoading, InlineLoading } from "@/components/utils";
 export default function AxiosApiDemo() {
   const { authState } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
+  type DemoResult = { operation: string; data: unknown };
+  const [results, setResults] = useState<DemoResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Clear previous results and errors
@@ -28,9 +29,15 @@ export default function AxiosApiDemo() {
   };
 
   // Generic error handler
-  const handleError = (error: any, operation: string) => {
+  const handleError = (error: unknown, operation: string) => {
     console.error(`${operation} failed:`, error);
-    setError(`${operation} failed: ${error.message}`);
+    let message = String(error);
+    if (typeof error === "object" && error !== null) {
+      const errObj = error as Record<string, unknown>;
+      if (typeof errObj["message"] === "string")
+        message = errObj["message"] as string;
+    }
+    setError(`${operation} failed: ${message}`);
     setLoading(false);
   };
 
@@ -319,16 +326,19 @@ export default function AxiosApiDemo() {
         {results.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-xl font-semibold text-gray-900">Results</h3>
-            {results.map((result, index) => (
-              <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold text-gray-900 mb-2">
-                  {result.operation}
-                </h4>
-                <pre className="text-sm text-gray-700 overflow-x-auto bg-white p-2 rounded border">
-                  {JSON.stringify(result.data, null, 2)}
-                </pre>
-              </div>
-            ))}
+            {results.map((result, index) => {
+              const r = result as { operation: string; data: unknown };
+              return (
+                <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    {r.operation}
+                  </h4>
+                  <pre className="text-sm text-gray-700 overflow-x-auto bg-white p-2 rounded border">
+                    {JSON.stringify(r.data, null, 2)}
+                  </pre>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

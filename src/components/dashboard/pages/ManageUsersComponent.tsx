@@ -9,8 +9,7 @@ import {
   BaseItem,
 } from "../DataManagementTable";
 import { usersService } from "@/services/users.service";
-import { profilesService } from "@/services/profiles.service";
-import { Profile, SystemUser } from "@/types/api";
+import { Profile } from "@/types/api";
 import { Role } from "@/types/auth";
 import { Gender } from "@/types/api";
 import { TableLoading } from "@/components/utils";
@@ -22,11 +21,8 @@ interface User extends BaseItem {
   role: string;
 }
 
-// Sample data (will be replaced by API data)
-const sampleUsers: User[] = [];
-
+// Roles used in forms
 const roles = ["ADMIN", "TEACHER", "STUDENT"];
-const genders = ["MALE", "FEMALE", "OTHER"];
 
 // Table columns configuration
 const userColumns: TableColumn[] = [
@@ -38,12 +34,6 @@ const userColumns: TableColumn[] = [
 
 // Form fields configuration - Simple 3-field setup as originally specified
 const userFormFields: FormField[] = [
-  {
-    key: "name",
-    label: "Name",
-    type: "text",
-    required: true,
-  },
   {
     key: "email",
     label: "Email",
@@ -133,16 +123,22 @@ export function ManageUsersComponent() {
       }
       setError(null);
 
+      console.log("🔄 Loading users from /api/profiles...");
+
       // Use the profiles endpoint directly since that's what the backend provides
       const response = await usersService.getAllUsers({ size: 100 });
-      console.log("📊 Raw API Response:", JSON.stringify(response, null, 2));
+      console.log(
+        "📊 Raw API Response from /api/profiles:",
+        JSON.stringify(response, null, 2)
+      );
 
       // Check if response has the expected structure
       if (!response || !response.content || !Array.isArray(response.content)) {
+        console.error("❌ Invalid response structure:", response);
         throw new Error("Invalid response structure from API");
       }
 
-      console.log("📊 Number of users:", response.content.length);
+      console.log("📊 Number of profiles found:", response.content.length);
 
       // Transform profiles to UI format - handling the new backend structure
       const transformedUsers: User[] = response.content.map(
@@ -154,16 +150,16 @@ export function ManageUsersComponent() {
             ? `${profile.firstName} ${profile.lastName}`
             : userEntity?.email || "No Name";
 
-          console.log(`📊 User:`, {
-            id: profile.id,
-            email: userEntity?.email,
-            role: userEntity?.role,
+          console.log(`📊 Processing profile:`, {
+            profileId: profile.id,
+            userEmail: userEntity?.email,
+            userRole: userEntity?.role,
             hasCompleteProfile: hasCompleteProfile,
             displayName: displayName,
           });
 
           return {
-            id: parseInt(profile.id),
+            id: parseInt(profile.id) || Math.random(),
             name: displayName,
             email: userEntity?.email || "",
             role: userEntity?.role || "",
@@ -173,6 +169,8 @@ export function ManageUsersComponent() {
       );
 
       console.log("📊 Final transformed users:", transformedUsers);
+      console.log("📊 Total users in table:", transformedUsers.length);
+
       setUsers(transformedUsers);
     } catch (err) {
       console.error("❌ Failed to load users - full error:", err);
@@ -189,6 +187,8 @@ export function ManageUsersComponent() {
     try {
       setError(null);
 
+      console.log("👤 Creating new user:", user);
+
       // Create user account only with default password
       const newUser = await usersService.createUser({
         email: user.email as string,
@@ -196,18 +196,19 @@ export function ManageUsersComponent() {
         role: user.role as Role,
       });
 
-      console.log("User created successfully:", newUser);
-
-      // Note: Profile will be created when user logs in for the first time
-      // through the profile guard popup
+      console.log("✅ User account created successfully:", newUser);
+      console.log(
+        "ℹ️ Note: Profile will be created when user logs in for the first time"
+      );
 
       // Reload users to get the updated list
+      console.log("🔄 Reloading users list after creation...");
       await loadUsers();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to add user";
       setError(errorMessage);
-      console.error("Failed to add user:", err);
+      console.error("❌ Failed to add user:", err);
       throw new Error(errorMessage);
     }
   };

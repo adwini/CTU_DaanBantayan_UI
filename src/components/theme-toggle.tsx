@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { IconSun, IconMoon, IconDeviceDesktop } from "@tabler/icons-react";
+import { IconSun, IconMoon } from "@tabler/icons-react";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();

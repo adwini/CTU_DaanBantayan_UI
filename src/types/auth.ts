@@ -125,7 +125,7 @@ export interface ApiErrorResponse {
   status: number;
   timestamp: string;
   path: string;
-  details?: any;
+  details?: unknown;
 }
 
 // JWT Token payload (for client-side token parsing if needed)

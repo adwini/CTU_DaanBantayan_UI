@@ -9,7 +9,6 @@ import {
 } from "../DataManagementTable";
 import { useEffect, useState } from "react";
 import { subjectsService } from "@/services/subjects.service";
-import { Subject as ApiSubject } from "@/types/api";
 import { TableLoading } from "@/components/utils";
 
 // Subject interface extending BaseItem
@@ -19,7 +18,7 @@ interface Subject extends BaseItem {
   uuid?: string; // Store the original UUID from API
 }
 
-// Sample data
+// Sample data (kept for local UI fallback)
 const sampleSubjects: Subject[] = [
   {
     id: 1,

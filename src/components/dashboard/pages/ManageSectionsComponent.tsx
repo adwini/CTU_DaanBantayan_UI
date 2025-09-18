@@ -10,60 +10,26 @@ import {
 import { useEffect, useState } from "react";
 import { sectionsService } from "@/services/sections.service";
 import { profilesService } from "@/services/profiles.service";
-import { Section as ApiSection, Profile } from "@/types/api";
 import { TableLoading } from "@/components/utils";
+
+// Adviser object interface for API response
+interface AdviserObject {
+  id?: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  fullName?: string;
+  [key: string]: unknown; // Allow additional properties
+}
 
 // Section interface extending BaseItem
 interface Section extends BaseItem {
   sectionName: string;
   gradeLevel: string;
   adviserId: string;
-  adviserName: string; // This will be populated based on adviserId
+  adviserName: string;
+  apiId?: string; // Store the original API ID as string
 }
-
-// Sample advisers data (you would fetch this from your API)
-const availableAdvisers = [
-  { id: "1", name: "Mr. John Doe" },
-  { id: "2", name: "Ms. Jane Smith" },
-  { id: "3", name: "Dr. Robert Brown" },
-  { id: "4", name: "Mrs. Sarah Wilson" },
-];
-
-// Sample data
-const sampleSections: Section[] = [
-  {
-    id: 1,
-    sectionName: "Grade 7-A",
-    gradeLevel: "7",
-    adviserId: "1",
-    adviserName: "Mr. John Doe",
-    status: "active",
-  },
-  {
-    id: 2,
-    sectionName: "Grade 7-B",
-    gradeLevel: "7",
-    adviserId: "2",
-    adviserName: "Ms. Jane Smith",
-    status: "active",
-  },
-  {
-    id: 3,
-    sectionName: "Grade 8-A",
-    gradeLevel: "8",
-    adviserId: "3",
-    adviserName: "Dr. Robert Brown",
-    status: "active",
-  },
-  {
-    id: 4,
-    sectionName: "Grade 8-B",
-    gradeLevel: "8",
-    adviserId: "4",
-    adviserName: "Mrs. Sarah Wilson",
-    status: "inactive",
-  },
-];
 
 const gradeLevels = ["7", "8", "9", "10", "11", "12"];
 
@@ -75,35 +41,6 @@ const sectionColumns: TableColumn[] = [
 ];
 
 // Form fields configuration
-const sectionFormFields: FormField[] = [
-  {
-    key: "sectionName",
-    label: "Section Name",
-    type: "text",
-    required: true,
-    placeholder: "e.g., Grade 7-A",
-  },
-  {
-    key: "gradeLevel",
-    label: "Grade Level",
-    type: "select",
-    required: true,
-    options: gradeLevels.map((grade) => ({
-      label: `Grade ${grade}`,
-      value: grade,
-    })),
-  },
-  {
-    key: "adviserId",
-    label: "Adviser ID",
-    type: "select",
-    required: true,
-    options: availableAdvisers.map((adviser) => ({
-      label: `${adviser.name} (ID: ${adviser.id})`,
-      value: adviser.id,
-    })),
-  },
-];
 
 // Filter options configuration
 const sectionFilterOptions: FilterOption[] = [
@@ -165,13 +102,98 @@ export function ManageSectionsComponent() {
 
       // Transform API sections to component sections
       const transformedSections: Section[] = sectionsResponse.map(
-        (apiSection) => ({
-          id: parseInt(apiSection.id) || Math.random(),
-          sectionName: apiSection.name,
-          gradeLevel: apiSection.gradeLevel,
-          adviserId: apiSection.id, // Using section ID as a placeholder
-          adviserName: apiSection.adviser,
-        })
+        (apiSection) => {
+          console.log("🔍 Processing API section:", apiSection);
+          console.log("🔍 Adviser field type:", typeof apiSection.adviser);
+          console.log("🔍 Adviser field value:", apiSection.adviser);
+
+          // Handle adviser field - could be string or object
+          let adviserName = "Unknown Adviser";
+          let adviserId = apiSection.id; // Default to section ID
+
+          try {
+            if (typeof apiSection.adviser === "string") {
+              adviserName = apiSection.adviser;
+              console.log("✅ Adviser is string:", adviserName);
+            } else if (
+              apiSection.adviser &&
+              typeof apiSection.adviser === "object" &&
+              !Array.isArray(apiSection.adviser)
+            ) {
+              // If adviser is an object, try to extract name and id
+              const adviserObj: AdviserObject = apiSection.adviser;
+
+              // Handle different object structures
+              if (adviserObj.firstName && adviserObj.lastName) {
+                // Structure: {firstName, lastName, ...}
+                adviserName =
+                  `${adviserObj.firstName} ${adviserObj.lastName}`.trim();
+                adviserId = adviserObj.id || apiSection.id;
+                console.log(
+                  "✅ Adviser object with firstName/lastName, constructed name:",
+                  adviserName
+                );
+              } else if (adviserObj.name) {
+                // Structure: {name, ...}
+                adviserName = adviserObj.name;
+                adviserId = adviserObj.id || apiSection.id;
+                console.log(
+                  "✅ Adviser object with name property:",
+                  adviserName
+                );
+              } else if (adviserObj.fullName) {
+                // Structure: {fullName, ...}
+                adviserName = adviserObj.fullName;
+                adviserId = adviserObj.id || apiSection.id;
+                console.log(
+                  "✅ Adviser object with fullName property:",
+                  adviserName
+                );
+              } else {
+                console.log(
+                  "❌ Adviser object doesn't have expected name properties:",
+                  adviserObj
+                );
+                adviserName = "Unknown Adviser";
+              }
+            } else {
+              console.log(
+                "❌ Adviser field is neither string nor valid object:",
+                apiSection.adviser
+              );
+              adviserName = "Unknown Adviser";
+            }
+          } catch (error) {
+            console.error("🚨 Error processing adviser field:", error);
+            adviserName = "Unknown Adviser";
+          }
+
+          // Final safeguard: ensure adviserName is always a string
+          if (
+            typeof adviserName !== "string" ||
+            adviserName === "[object Object]"
+          ) {
+            console.error("🚨 CRITICAL: adviserName is not a valid string!", {
+              adviserName,
+              type: typeof adviserName,
+              adviserField: apiSection.adviser,
+            });
+            adviserName = "Unknown Adviser";
+          }
+
+          const transformedSection = {
+            id: parseInt(apiSection.id) || Math.random(),
+            apiId: apiSection.id, // Store original string ID for API calls
+            sectionName: apiSection.name,
+            gradeLevel: apiSection.gradeLevel,
+            adviserId: adviserId,
+            adviserName:
+              typeof adviserName === "string" ? adviserName : "Unknown Adviser",
+          };
+
+          console.log("📋 Final transformed section:", transformedSection);
+          return transformedSection;
+        }
       );
 
       // Transform teachers to adviser options
@@ -203,22 +225,31 @@ export function ManageSectionsComponent() {
   ) => {
     try {
       setError(null);
+      console.log("🔄 Creating section with data:", section);
+      console.log("📋 Available advisers:", advisers);
+
       // Find the adviser name based on adviserId
       const adviser = advisers.find((a) => a.id === section.adviserId);
+      console.log("👤 Selected adviser:", adviser);
+      console.log("🔍 Looking for adviserId:", section.adviserId);
+
+      const adviserName = adviser?.name || "Unknown Adviser";
+      console.log("📝 Using adviser name:", adviserName);
 
       const newSectionData = {
         name: section.sectionName as string,
         gradeLevel: section.gradeLevel as string,
-        adviser: adviser?.name || "Unknown Adviser",
+        adviser: adviserName,
       };
 
+      console.log("📤 Sending to API:", newSectionData);
       const result = await sectionsService.createSection(newSectionData);
-      console.log("Section created:", result);
+      console.log("✅ Section created result:", result);
 
       // Refresh the sections list
       await loadSections();
     } catch (error) {
-      console.error("Failed to add section:", error);
+      console.error("❌ Failed to add section:", error);
       setError(
         error instanceof Error ? error.message : "Failed to add section"
       );
@@ -234,19 +265,32 @@ export function ManageSectionsComponent() {
   ) => {
     try {
       setError(null);
+      console.log("🔄 Editing section with id:", id);
+      console.log("📝 Section data to update:", sectionData);
+
       // Find the current section
       const currentSection = sections.find((s) => s.id === id);
-      if (!currentSection) return;
+      if (!currentSection) {
+        console.error("❌ Section not found with id:", id);
+        return;
+      }
+
+      console.log("📋 Current section:", currentSection);
+      console.log(
+        "🔑 Using API ID:",
+        currentSection.apiId || currentSection.id.toString()
+      );
 
       // Update adviser name if adviserId is being updated
       let adviserName = currentSection.adviserName;
       if (sectionData.adviserId) {
         const adviser = advisers.find((a) => a.id === sectionData.adviserId);
         adviserName = adviser?.name || "Unknown Adviser";
+        console.log("👤 Updated adviser:", adviser);
       }
 
       const updateData = {
-        id: currentSection.adviserId, // Using the stored adviserId as the actual section ID
+        id: currentSection.apiId || currentSection.id.toString(), // Use the API string ID
         name: sectionData.sectionName || currentSection.sectionName,
         gradeLevel: sectionData.gradeLevel || currentSection.gradeLevel,
         adviser: adviserName,
@@ -254,16 +298,17 @@ export function ManageSectionsComponent() {
         updatedAt: new Date().toISOString().slice(0, 19),
       };
 
+      console.log("📤 Sending update data to API:", updateData);
       const result = await sectionsService.updateSection(
-        currentSection.adviserId,
+        currentSection.apiId || currentSection.id.toString(), // Use the API string ID
         updateData
       );
-      console.log("Section updated:", result);
+      console.log("✅ Section updated result:", result);
 
       // Refresh the sections list
       await loadSections();
     } catch (error) {
-      console.error("Failed to edit section:", error);
+      console.error("❌ Failed to edit section:", error);
       setError(
         error instanceof Error ? error.message : "Failed to edit section"
       );
@@ -279,7 +324,9 @@ export function ManageSectionsComponent() {
       const section = sections.find((s) => s.id === id);
       if (!section) return;
 
-      await sectionsService.deleteSection(section.adviserId);
+      await sectionsService.deleteSection(
+        section.apiId || section.id.toString() // Use the API string ID
+      );
       console.log("Section deleted:", id);
 
       // Refresh the sections list to ensure consistency
@@ -293,11 +340,6 @@ export function ManageSectionsComponent() {
         error instanceof Error ? error.message : "Failed to delete section"
       );
     }
-  };
-
-  const handleViewSection = (id: number) => {
-    console.log("View section details:", id);
-    // Here you would typically navigate to a section details page or open a modal
   };
 
   // Update form fields with real adviser data

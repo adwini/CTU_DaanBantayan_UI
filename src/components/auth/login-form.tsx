@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +24,6 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const { login, authState } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -35,15 +34,16 @@ export function LoginForm({
     password?: string;
   }>({});
 
-  // Check if user is already authenticated and redirect
   useEffect(() => {
     if (authState.isAuthenticated && !authState.isLoading) {
-      const redirectPath = searchParams.get("redirect") || "/admin-dashboard";
+      const redirectPath =
+        (typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("redirect")
+          : null) || "/admin-dashboard";
       router.push(redirectPath);
     }
-  }, [authState.isAuthenticated, authState.isLoading, router, searchParams]);
+  }, [authState.isAuthenticated, authState.isLoading, router]);
 
-  // Don't render the form if user is already authenticated
   if (authState.isAuthenticated && !authState.isLoading) {
     return <RedirectLoading text="Redirecting to dashboard..." />;
   }
@@ -55,7 +55,6 @@ export function LoginForm({
       [name]: value,
     }));
 
-    // Clear field error when user starts typing
     if (fieldErrors[name as keyof typeof fieldErrors]) {
       setFieldErrors((prev) => ({
         ...prev,
@@ -95,11 +94,8 @@ export function LoginForm({
         email: formData.email,
         password: formData.password,
       });
-      // If we reach here, login was successful and user will be redirected
     } catch (error) {
-      // Error is handled by the auth context and displayed in the UI
       console.error("Login failed:", error);
-      // The auth context will set the error state, which will be displayed in the form
     }
   };
 
@@ -120,7 +116,6 @@ export function LoginForm({
           <CardContent>
             <form onSubmit={handleSubmit}>
               <div className="flex flex-col gap-6">
-                {/* Global Error Display */}
                 {authState.error && (
                   <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
                     <AlertCircle className="h-4 w-4 text-red-500" />
@@ -130,7 +125,6 @@ export function LoginForm({
                   </div>
                 )}
 
-                {/* Email Field */}
                 <div className="grid gap-3">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -151,7 +145,6 @@ export function LoginForm({
                   )}
                 </div>
 
-                {/* Password Field */}
                 <div className="grid gap-3">
                   <div className="flex items-center">
                     <Label htmlFor="password">Password</Label>
@@ -194,7 +187,6 @@ export function LoginForm({
                   )}
                 </div>
 
-                {/* Submit Button */}
                 <div className="flex flex-col gap-3">
                   <Button
                     type="submit"
@@ -209,15 +201,12 @@ export function LoginForm({
                 </div>
               </div>
 
-              {/* Demo Credentials for Testing */}
               <div className="mt-6 p-4 bg-gray-50 rounded-md">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">
                   Demo Credentials:
                 </h4>
                 <div className="text-xs text-gray-600 space-y-1">
                   <div>Admin: admin@admin.com / admin123</div>
-                  {/* <div>Teacher: teacher@ctu.edu.ph / password123</div>
-                  <div>Student: student@ctu.edu.ph / password123</div> */}
                 </div>
               </div>
             </form>

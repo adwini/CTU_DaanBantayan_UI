@@ -23,13 +23,25 @@ class UsersService {
    */
   async createUser(userData: RegisterRequest): Promise<string> {
     try {
+      console.log("👤 Creating user account with data:", userData);
+      console.log("📡 Making POST request to: /api/users");
+
       const response = await apiClient.post<string>("/api/users", userData);
+
+      console.log("✅ User creation response:", response);
+      console.log("✅ User creation response data:", response.data);
+
       return response.data;
     } catch (error) {
+      console.error("❌ Create user failed:", error);
       if (error instanceof ApiError) {
-        throw new Error(this.getErrorMessage(error));
+        console.error("❌ API Error details:", {
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
       }
-      throw new Error("Failed to create user");
+      throw error;
     }
   }
 
@@ -52,13 +64,30 @@ class UsersService {
       const url = `/api/profiles${
         queryParams.toString() ? `?${queryParams.toString()}` : ""
       }`;
+
+      console.log("📡 Making GET request to:", url);
+      console.log("📡 Query params:", Object.fromEntries(queryParams));
+
       const response = await apiClient.get<ApiPaginatedResponse<Profile>>(url);
+
+      console.log("📊 Profiles API response:", response);
+      console.log("📊 Profiles response data:", response.data);
+      console.log(
+        "📊 Number of profiles in response:",
+        response.data.content?.length || 0
+      );
+
       return response.data;
     } catch (error) {
+      console.error("❌ getAllUsers failed:", error);
       if (error instanceof ApiError) {
-        throw new Error(this.getErrorMessage(error));
+        console.error("❌ API Error details:", {
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
       }
-      throw new Error("Failed to get users");
+      throw error;
     }
   }
 

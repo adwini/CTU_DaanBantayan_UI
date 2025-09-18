@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/auth.context";
 import AboutModal from "../modal/about-modal.component";
 import ContactModal from "../modal/contact-modal.component";
 import HelpModal from "../modal/help-modal.component";
-import { MotionCard, MotionHoverText } from "../utils/motion-wrapper";
+import { MotionHoverText } from "../utils/motion-wrapper";
 
 export default function Header(): JSX.Element {
   const router = useRouter();

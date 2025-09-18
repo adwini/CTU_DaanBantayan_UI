@@ -340,7 +340,7 @@ class AuthenticationService {
   /**
    * Update user profile
    */
-  async updateProfile(profileData: any): Promise<string> {
+  async updateProfile(profileData: unknown): Promise<string> {
     try {
       const response = await apiClient.post<string>(
         "/api/profiles",
@@ -365,7 +365,7 @@ class AuthenticationService {
       page?: number;
       size?: number;
     } = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const queryParams = new URLSearchParams();
 

@@ -53,7 +53,7 @@ export function NavUser({
   asHeader?: boolean;
 }) {
   const { isMobile } = useSidebar();
-  const { logout, user: authUser, profile, refreshProfile } = useAuth();
+  const { logout, profile, refreshProfile } = useAuth();
   const router = useRouter();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileFormData, setProfileFormData] = useState({

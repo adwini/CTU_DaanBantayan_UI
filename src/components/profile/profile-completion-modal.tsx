@@ -350,6 +350,14 @@ export default function ProfileCompletionModal({
                 size="lg">
                 {buttonText}
               </Button>
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  onClick={handleSkip}
+                  className="w-full sm:w-auto">
+                  Skip for now
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

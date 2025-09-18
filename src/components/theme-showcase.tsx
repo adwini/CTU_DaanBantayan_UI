@@ -13,7 +13,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import {
   IconPalette,
   IconSun,
-  IconMoon,
   IconCheck,
   IconStar,
   IconHeart,

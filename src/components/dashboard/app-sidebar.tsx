@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import {
   IconChartBar,
   IconFileDescription,
@@ -61,9 +62,11 @@ export function AppSidebar({
               <SidebarMenuButton
                 onClick={() => handleNavigation("dashboard")}
                 className="data-[slot=sidebar-menu-button]:!p-2 cursor-pointer flex items-center gap-3">
-                <img
+                <Image
                   src="/logo1.jpg"
                   alt="Academia de San Martin logo"
+                  width={32}
+                  height={32}
                   className="h-8 w-auto"
                 />
 

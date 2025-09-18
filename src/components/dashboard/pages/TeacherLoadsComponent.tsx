@@ -7,12 +7,7 @@ import {
   FilterOption,
   BaseItem,
 } from "../DataManagementTable";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+// Card UI not used in this component
 import { Clock } from "lucide-react";
 
 // Teacher Load interface extending BaseItem

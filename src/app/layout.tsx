@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/footer/footer.component";
-import Header from "@/components/header/header.component";
 import ThemeProviderWrapper from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/auth.context";
 import ProfileGuard from "@/components/profile/profile-guard";
