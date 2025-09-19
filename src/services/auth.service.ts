@@ -179,7 +179,7 @@ class AuthenticationService {
 
           // First verify we're still authenticated
           try {
-            await apiClient.get("/api/teachers");
+            await apiClient.get("/api/users/teachers");
             console.log(
               "✅ Authentication verified - server error is temporary"
             );
@@ -240,7 +240,7 @@ class AuthenticationService {
           // Verify authentication through alternative endpoints
           try {
             // Try the teachers endpoint first
-            await apiClient.get("/api/teachers");
+            await apiClient.get("/api/users/teachers");
             console.log(
               "✅ Authentication verified via teachers endpoint - user is authenticated but has no profile"
             );
@@ -327,7 +327,9 @@ class AuthenticationService {
    */
   async getAllTeachers(): Promise<ProfileResponse[]> {
     try {
-      const response = await apiClient.get<ProfileResponse[]>("/api/teachers");
+      const response = await apiClient.get<ProfileResponse[]>(
+        "/api/users/teachers"
+      );
       return response.data;
     } catch (error) {
       if (error instanceof ApiError) {

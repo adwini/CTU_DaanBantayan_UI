@@ -306,63 +306,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     dispatch({ type: "SET_LOADING", payload: false });
   }, []);
 
-  // Add browser close detection and session management
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    // Handle browser close/refresh
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Optional: Ask user to confirm leaving if they're logged in
-      if (authState.isAuthenticated) {
-        const message =
-          "Are you sure you want to leave? You will be logged out.";
-        event.returnValue = message;
-        return message;
-      }
-    };
-
-    // Handle visibility change (when user switches tabs or minimizes browser)
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // Browser tab is hidden - could implement additional security here
-        console.log("👁️ Browser tab hidden");
-      } else {
-        // Browser tab is visible again - check session validity (only for localStorage)
-        console.log("👁️ Browser tab visible");
-        if (!SESSION_CONFIG.useSessionStorage) {
-          const storage = getStorage();
-          const savedState = storage?.getItem(AUTH_STORAGE_KEY);
-          if (savedState) {
-            try {
-              const parsed = JSON.parse(savedState);
-              if (parsed.timestamp && isSessionExpired(parsed.timestamp)) {
-                console.log(
-                  "⏰ Session expired while tab was hidden - logging out"
-                );
-                storage?.removeItem(AUTH_STORAGE_KEY);
-                dispatch({ type: "LOGOUT" });
-              }
-            } catch (error) {
-              console.warn(
-                "Error checking session on visibility change:",
-                error
-              );
-            }
-          }
-        }
-      }
-    };
-
-    // Add event listeners
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [authState.isAuthenticated]);
+  // ... keep all previous code above ...
 
   // Login function
   const login = useCallback(
@@ -455,6 +399,83 @@ export function AuthProvider({ children }: AuthProviderProps) {
       dispatch({ type: "LOGOUT" });
     }
   }, [authState.user?.id]);
+
+  // Add browser close detection, session management, and refresh token event listener
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Handle browser close/refresh
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (authState.isAuthenticated) {
+        const message =
+          "Are you sure you want to leave? You will be logged out.";
+        event.returnValue = message;
+        return message;
+      }
+    };
+
+    // Handle visibility change (when user switches tabs or minimizes browser)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log("👁️ Browser tab hidden");
+      } else {
+        console.log("👁️ Browser tab visible");
+        if (!SESSION_CONFIG.useSessionStorage) {
+          const storage = getStorage();
+          const savedState = storage?.getItem(AUTH_STORAGE_KEY);
+          if (savedState) {
+            try {
+              const parsed = JSON.parse(savedState);
+              if (parsed.timestamp && isSessionExpired(parsed.timestamp)) {
+                console.log(
+                  "⏰ Session expired while tab was hidden - logging out"
+                );
+                storage?.removeItem(AUTH_STORAGE_KEY);
+                dispatch({ type: "LOGOUT" });
+              }
+            } catch (error) {
+              console.warn(
+                "Error checking session on visibility change:",
+                error
+              );
+            }
+          }
+        }
+      }
+    };
+
+    // Handle refresh token event from API client
+    const handleRefreshTokenEvent = async () => {
+      const shouldRefresh = window.confirm(
+        "Your session has expired or is invalid. Would you like to refresh your session?"
+      );
+      if (shouldRefresh) {
+        try {
+          await refreshToken();
+          window.alert("Session refreshed successfully.");
+        } catch (error) {
+          window.alert("Failed to refresh session. You will be logged out.");
+          dispatch({ type: "LOGOUT" });
+        }
+      } else {
+        dispatch({ type: "LOGOUT" });
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("triggerRefreshToken", handleRefreshTokenEvent);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener(
+        "triggerRefreshToken",
+        handleRefreshTokenEvent
+      );
+    };
+  }, [authState.isAuthenticated, refreshToken]);
 
   // Get current user function - only call when explicitly needed
   const getCurrentUser = useCallback(async () => {

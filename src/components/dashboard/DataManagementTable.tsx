@@ -132,7 +132,12 @@ export function DataManagementTable({
   const [editingItem, setEditingItem] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [deletingItemIds, setDeletingItemIds] = useState<Set<number>>(new Set());
+  const [deletingItemIds, setDeletingItemIds] = useState<Set<number>>(
+    new Set()
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -190,31 +195,76 @@ export function DataManagementTable({
     setIsModalOpen(false);
     setIsEditMode(false);
     setEditingItem(null);
+    setSubmitError(null);
+    setFormErrors({});
+    setIsSubmitting(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isEditMode && editingItem !== null) {
-      // Update existing item
-      const updatedItems = items.map((item) =>
-        item.id === editingItem ? { ...item, ...formData } : item
-      );
-      setItems(updatedItems);
-      onEdit?.(editingItem, formData);
-    } else {
-      // Add new item
-      const newItem: BaseItem = {
-        ...formData,
-        id: Math.max(...items.map((i) => i.id), 0) + 1,
-        status: (formData.status as string) || "active",
-      };
-      const updatedItems = [...items, newItem];
-      setItems(updatedItems);
-      onAdd?.(newItem);
-    }
+    // Clear previous errors
+    setSubmitError(null);
+    setFormErrors({});
+    setIsSubmitting(true);
 
-    resetForm();
+    try {
+      if (isEditMode && editingItem !== null) {
+        // Update existing item
+        const updatedItems = items.map((item) =>
+          item.id === editingItem ? { ...item, ...formData } : item
+        );
+        setItems(updatedItems);
+        await onEdit?.(editingItem, formData);
+      } else {
+        // Add new item
+        const newItem: BaseItem = {
+          ...formData,
+          id: Math.max(...items.map((i) => i.id), 0) + 1,
+          status: (formData.status as string) || "active",
+        };
+        const updatedItems = [...items, newItem];
+        setItems(updatedItems);
+        await onAdd?.(newItem);
+      }
+
+      // Only reset form if operation succeeds
+      resetForm();
+    } catch (error) {
+      console.error("Form submission error:", error);
+
+      // Handle validation errors
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+
+        // Check if it's a field-specific validation error
+        if (
+          errorMessage.includes("required") ||
+          errorMessage.includes("already exists")
+        ) {
+          // Try to map error to specific fields
+          const fieldErrors: Record<string, string> = {};
+
+          formFields.forEach((field) => {
+            if (errorMessage.toLowerCase().includes(field.key.toLowerCase())) {
+              fieldErrors[field.key] = errorMessage;
+            }
+          });
+
+          if (Object.keys(fieldErrors).length > 0) {
+            setFormErrors(fieldErrors);
+          } else {
+            setSubmitError(errorMessage);
+          }
+        } else {
+          setSubmitError(errorMessage);
+        }
+      } else {
+        setSubmitError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAddItem = () => {
@@ -256,7 +306,7 @@ export function DataManagementTable({
     if (!onDelete) return;
 
     // Add to deleting set to show loading state
-    setDeletingItemIds(prev => new Set(prev).add(itemId));
+    setDeletingItemIds((prev) => new Set(prev).add(itemId));
 
     try {
       // Call the async delete handler
@@ -271,7 +321,7 @@ export function DataManagementTable({
       throw error; // Re-throw to let the parent component handle the error
     } finally {
       // Remove from deleting set regardless of success/failure
-      setDeletingItemIds(prev => {
+      setDeletingItemIds((prev) => {
         const newSet = new Set(prev);
         newSet.delete(itemId);
         return newSet;
@@ -348,7 +398,12 @@ export function DataManagementTable({
             <Select
               value={fieldValue}
               onValueChange={(value) => handleInputChange(field.key, value)}>
-              <SelectTrigger>
+              <SelectTrigger
+                className={
+                  formErrors[field.key]
+                    ? "border-red-500 focus:border-red-500"
+                    : ""
+                }>
                 <SelectValue
                   placeholder={
                     field.placeholder || `Select ${field.label.toLowerCase()}`
@@ -369,6 +424,9 @@ export function DataManagementTable({
                 })}
               </SelectContent>
             </Select>
+            {formErrors[field.key] && (
+              <p className="text-sm text-red-600">{formErrors[field.key]}</p>
+            )}
           </div>
         );
 
@@ -384,7 +442,15 @@ export function DataManagementTable({
               placeholder={field.placeholder}
               onChange={(e) => handleInputChange(field.key, e.target.value)}
               autoFocus={false}
+              className={
+                formErrors[field.key]
+                  ? "border-red-500 focus:border-red-500"
+                  : ""
+              }
             />
+            {formErrors[field.key] && (
+              <p className="text-sm text-red-600">{formErrors[field.key]}</p>
+            )}
           </div>
         );
 
@@ -400,7 +466,15 @@ export function DataManagementTable({
               placeholder={field.placeholder}
               onChange={(e) => handleInputChange(field.key, e.target.value)}
               autoFocus={false}
+              className={
+                formErrors[field.key]
+                  ? "border-red-500 focus:border-red-500"
+                  : ""
+              }
             />
+            {formErrors[field.key] && (
+              <p className="text-sm text-red-600">{formErrors[field.key]}</p>
+            )}
           </div>
         );
 
@@ -465,7 +539,15 @@ export function DataManagementTable({
               placeholder={field.placeholder}
               onChange={(e) => handleInputChange(field.key, e.target.value)}
               autoFocus={false}
+              className={
+                formErrors[field.key]
+                  ? "border-red-500 focus:border-red-500"
+                  : ""
+              }
             />
+            {formErrors[field.key] && (
+              <p className="text-sm text-red-600">{formErrors[field.key]}</p>
+            )}
           </div>
         );
     }
@@ -635,16 +717,34 @@ export function DataManagementTable({
                       []
                     )}
 
+                    {/* Submit Error Display */}
+                    {submitError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                        <p className="text-sm text-red-600">{submitError}</p>
+                      </div>
+                    )}
+
                     <div className="flex justify-end space-x-2 pt-6 border-t border-border/50">
                       <Button
                         type="button"
                         variant="outline"
                         className="btn-ctu-secondary"
-                        onClick={() => resetForm()}>
+                        onClick={() => resetForm()}
+                        disabled={isSubmitting}>
                         Cancel
                       </Button>
-                      <Button type="submit" className="btn-ctu-primary">
-                        {isEditMode ? "Update Item" : "Add Item"}
+                      <Button
+                        type="submit"
+                        className="btn-ctu-primary"
+                        disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>
+                            <IconLoader className="h-4 w-4 mr-2 animate-spin" />
+                            {isEditMode ? "Updating..." : "Adding..."}
+                          </>
+                        ) : (
+                          <>{isEditMode ? "Update Item" : "Add Item"}</>
+                        )}
                       </Button>
                     </div>
                   </form>
@@ -784,15 +884,6 @@ export function DataManagementTable({
             <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
               <span>
                 Showing {filteredItems.length} of {items.length} items
-              </span>
-              <span>
-                {Object.entries(filters).some(
-                  ([, value]) => value !== "All" && value !== ""
-                ) &&
-                  `Filtered by: ${Object.entries(filters)
-                    .filter(([, value]) => value !== "All" && value !== "")
-                    .map(([key, value]) => `${key}: ${value}`)
-                    .join(", ")}`}
               </span>
             </div>
           </div>

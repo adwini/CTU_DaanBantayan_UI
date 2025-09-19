@@ -13,12 +13,15 @@ import { Profile } from "@/types/api";
 import { Role } from "@/types/auth";
 import { Gender } from "@/types/api";
 import { TableLoading } from "@/components/utils";
+import { profilesService } from "@/services/profiles.service";
 
 // User interface extending BaseItem - Simple setup as originally specified
 interface User extends BaseItem {
   name: string;
   email: string;
   role: string;
+  uuid?: string; // User UUID for API calls
+  profileId?: string; // Profile UUID for reference
 }
 
 // Roles used in forms
@@ -142,7 +145,7 @@ export function ManageUsersComponent() {
 
       // Transform profiles to UI format - handling the new backend structure
       const transformedUsers: User[] = response.content.map(
-        (profile: Profile) => {
+        (profile: Profile, index: number) => {
           // Backend uses 'userEntity' instead of 'user'
           const userEntity = profile.userEntity || profile.user; // Fallback to 'user' for compatibility
           const hasCompleteProfile = profile.firstName && profile.lastName;
@@ -152,14 +155,18 @@ export function ManageUsersComponent() {
 
           console.log(`📊 Processing profile:`, {
             profileId: profile.id,
+            userId: userEntity?.id,
             userEmail: userEntity?.email,
             userRole: userEntity?.role,
             hasCompleteProfile: hasCompleteProfile,
             displayName: displayName,
+            assignedTableId: index + 1,
           });
 
           return {
-            id: parseInt(profile.id) || Math.random(),
+            id: index + 1, // Use sequential IDs starting from 1
+            uuid: userEntity?.id || profile.id, // Use userEntity.id (user UUID) for API calls
+            profileId: profile.id, // Keep profile ID for reference
             name: displayName,
             email: userEntity?.email || "",
             role: userEntity?.role || "",
@@ -192,7 +199,7 @@ export function ManageUsersComponent() {
       // Create user account only with default password
       const newUser = await usersService.createUser({
         email: user.email as string,
-        password: "password123", // Default password as specified
+        password: "admin123", // Default password as specified
         role: user.role as Role,
       });
 
@@ -222,6 +229,14 @@ export function ManageUsersComponent() {
         throw new Error("User not found");
       }
 
+      console.log("👤 Found user for editing:", {
+        tableId: user.id,
+        userUuid: user.uuid,
+        profileId: user.profileId,
+        userName: user.name,
+        userEmail: user.email,
+      });
+
       // Extract first and last name from the full name
       const nameParts = userData.name
         ? userData.name.split(" ")
@@ -229,21 +244,59 @@ export function ManageUsersComponent() {
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
-      // Update user profile
-      await usersService.updateUser(user.id.toString(), {
-        firstName: firstName,
-        middleName: "",
-        lastName: lastName,
-        gender: Gender.OTHER,
-        birthDate: new Date().toISOString().split("T")[0],
-        contactNumber: "",
-        address: "",
+      console.log("📝 Preparing user update data:", {
+        userUuid: user.uuid, // This is sent as query param to PUT /api/users
+        profileId: user.profileId, // Profile ID for reference
+        firstName,
+        lastName,
+        userData,
       });
 
-      console.log("User updated successfully:", id, userData);
+      // Update user profile - use user UUID for PUT /api/users
+      const updateResult = await usersService.updateUser(
+        user.uuid || user.id.toString(),
+        {
+          firstName: firstName,
+          middleName: "",
+          lastName: lastName,
+          gender: Gender.OTHER,
+          birthDate: new Date().toISOString().split("T")[0],
+          contactNumber: "",
+          address: "",
+        }
+      );
+
+      console.log("✅ User update result:", updateResult);
+
+      // If backend returns updated user data, we could use it here
+      if (updateResult.updatedUser) {
+        console.log(
+          "📊 Backend returned updated user data:",
+          updateResult.updatedUser
+        );
+      }
+
+      console.log("✅ User updated successfully:", id, userData);
 
       // Reload users to get the updated list
+      console.log("🔄 Reloading users after update...");
       await loadUsers();
+      console.log("✅ Users reloaded successfully after update");
+
+      // Verify the update by checking the reloaded data
+      const updatedUser = users.find((u) => u.id === id);
+      if (updatedUser) {
+        console.log("👤 Updated user data after reload:", {
+          tableId: updatedUser.id,
+          userUuid: updatedUser.uuid,
+          profileId: updatedUser.profileId,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          role: updatedUser.role,
+        });
+      } else {
+        console.log("❌ Updated user not found in reloaded data!");
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to edit user";
@@ -262,9 +315,23 @@ export function ManageUsersComponent() {
         throw new Error("User not found");
       }
 
-      await usersService.deleteUser(user.id.toString());
+      if (!user.profileId) {
+        throw new Error(
+          "Cannot delete: this user has no profile yet. Ask the user to log in and create a profile first."
+        );
+      }
 
-      console.log("User deleted successfully:", id);
+      console.log("🗑️ Deleting profile:", {
+        tableId: user.id,
+        userUuid: user.uuid,
+        profileId: user.profileId,
+        userName: user.name,
+        userEmail: user.email,
+      });
+
+      await profilesService.deleteProfile(user.profileId);
+
+      console.log("Profile deleted successfully:", id);
 
       // Reload users to get the updated list
       await loadUsers();
@@ -286,12 +353,22 @@ export function ManageUsersComponent() {
         throw new Error("User not found");
       }
 
-      await usersService.toggleUserStatus(user.id.toString());
+      console.log("🔄 Toggling user status:", {
+        tableId: user.id,
+        userUuid: user.uuid,
+        profileId: user.profileId,
+        userName: user.name,
+        userEmail: user.email,
+      });
 
-      console.log("User status toggled successfully:", id);
+      await usersService.toggleUserStatus(user.uuid || user.id.toString());
+
+      console.log("✅ User status toggled successfully:", id);
 
       // Reload users to get the updated list
+      console.log("🔄 Reloading users after status toggle...");
       await loadUsers();
+      console.log("✅ Users reloaded successfully after status toggle");
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to toggle user status";
@@ -352,7 +429,7 @@ export function ManageUsersComponent() {
         addModalDescription="Fill in the details to create a new user account."
         getBadgeColor={getUserBadgeColor}
         actions={{
-          edit: true,
+          edit: false,
           statusToggle: true,
           delete: true,
         }}

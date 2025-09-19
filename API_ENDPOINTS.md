@@ -1,362 +1,241 @@
-# CTU Database API - Endpoints Documentation
+# CTU_DB_API - API Documentation
 
-This document provides a comprehensive guide to all available API endpoints, request payloads, and response formats for the CTU Database API.
-
-## Base URL
-
-```
-http://localhost:8080
-```
-
-## Authentication
-
-Most endpoints require JWT authentication via cookies. After logging in, the JWT token will be automatically set as a cookie and used for subsequent requests.
+This document provides a comprehensive reference for all API endpoints, including request/response formats, authentication, and edge cases. Use this for team integration, Postman, or future maintenance.
 
 ---
 
-## 🔐 Authentication Endpoints
+## Authentication
 
-### 1. Login
+### Login
 
-Authenticate a user and receive a JWT token.
-
-**Endpoint:** `POST /api/auth/session`  
-**Authentication:** None required  
-**Headers:** `Content-Type: application/json`
-
-**Request Body:**
+- **Method:** POST
+- **Path:** `/api/auth/session`
+- **Description:** Authenticate user and receive JWT cookie.
+- **Request Payload:**
 
 ```json
 {
   "email": "user@example.com",
-  "password": "password123"
+  "password": "secure123"
 }
 ```
 
-**Response:** Returns user information and sets JWT cookie
-
----
-
-### 2. Refresh Token
-
-Refresh an expired access token using a refresh token.
-
-**Endpoint:** `POST /api/auth/refresh`  
-**Authentication:** None required  
-**Query Parameters:**
-
-- `userId` (required): UUID of the user
-
-**Example:**
-
-```
-POST /api/auth/refresh?userId=123e4567-e89b-12d3-a456-426614174000
-```
-
-**Response:** Returns new access token and updates JWT cookie
-
----
-
-### 3. Logout
-
-Logout the current user and invalidate the JWT token.
-
-**Endpoint:** `POST /api/auth/logout`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:** `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Response:** Confirmation message and clears JWT cookie
-
----
-
-## 👤 User Management Endpoints
-
-### 4. Register User
-
-Create a new user account.
-
-**Endpoint:** `POST /api/users`  
-**Authentication:** None required  
-**Headers:** `Content-Type: application/json`
-
-**Request Body:**
+- **Response:**
+  - **200 OK**
+  - Sets `jwt` cookie
+  - Body:
 
 ```json
 {
-  "email": "newuser@example.com",
-  "password": "password123",
-  "role": "STUDENT"
+  "userResponse": {
+    /* user info */
+  },
+  "authorization": {
+    /* token info */
+  }
 }
 ```
 
-**Role Options:**
+- **Edge Cases:**
+  - Returns 401 for invalid credentials
+  - Rate limiting may apply
 
-- `ADMIN`
-- `TEACHER`
-- `STUDENT`
+### Refresh Token
 
-**Response:** Success message with user ID
+- **Method:** POST
+- **Path:** `/api/auth/refresh?userId=UUID`
+- **Description:** Refresh JWT token for a user.
+- **Request Payload:** None (userId as query param)
+- **Response:**
+  - **200 OK**
+  - Sets new `jwt` cookie
+  - Body: new JWT string
+- **Edge Cases:**
+  - 400 if userId missing/invalid
+  - 401 if refresh fails
 
----
+### Logout
 
-### 5. Get All Teachers
-
-Retrieve a list of all teacher profiles.
-
-**Endpoint:** `GET /api/teachers`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:** `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Response:** Array of teacher profile objects
-
----
-
-## 👨‍💼 Profile Management Endpoints
-
-### 6. Get My Profile
-
-Retrieve the current user's profile information.
-
-**Endpoint:** `GET /api/profiles/me`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:** `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Response:** Current user's profile data
+- **Method:** POST
+- **Path:** `/api/auth/logout`
+- **Description:** Invalidate JWT and clear cookie.
+- **Request Payload:** None
+- **Response:**
+  - **200 OK**
+  - Body: `"Logged out successfully"`
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
 
 ---
 
-### 7. Create Profile
+## Users
 
-Create a profile for the current user.
+### Register User
 
-**Endpoint:** `POST /api/profiles`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:**
+- **Method:** POST
+- **Path:** `/api/users`
+- **Description:** Register a new user (admin only).
+- **Request Payload:**
 
-- `Content-Type: application/json`
-- `Cookie: jwt=YOUR_JWT_TOKEN`
+```json
+{
+  "email": "user@example.com",
+  "password": "secure123",
+  "role": "STUDENT" // or "TEACHER", "ADMIN"
+}
+```
 
-**Request Body:**
+- **Response:**
+  - **201 Created**
+  - Body: user ID or success message
+- **Edge Cases:**
+  - Requires valid admin `jwt` cookie
+  - 400 if email already exists
+
+### Get All Teachers
+
+- **Method:** GET
+- **Path:** `/api/users/teachers`
+- **Description:** List all teacher profiles.
+- **Response:**
+  - **200 OK**
+  - Body: array of teacher profiles
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
+
+### Update User Status
+
+- **Method:** PUT
+- **Path:** `/api/users?id=UUID`
+- **Description:** Update user status (e.g., activate/deactivate).
+- **Request Payload:** None (id as query param)
+- **Response:**
+  - **200 OK**
+  - Body: success message
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
+  - 400 if id missing/invalid
+
+---
+
+## Profiles
+
+### Get My Profile
+
+- **Method:** GET
+- **Path:** `/api/profiles/me`
+- **Description:** Get the profile of the authenticated user.
+- **Response:**
+  - **200 OK**
+  - Body: profile object
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
+
+### Create Profile
+
+- **Method:** POST
+- **Path:** `/api/profiles`
+- **Description:** Create a profile for the authenticated user.
+- **Request Payload:**
 
 ```json
 {
   "firstName": "John",
-  "middleName": "Michael",
+  "middleName": "A.",
   "lastName": "Doe",
-  "gender": "MALE",
-  "birthDate": "1990-01-15",
+  "gender": "MALE", // or "FEMALE", "OTHER"
+  "birthDate": "1990-01-01",
   "contactNumber": "+1234567890",
-  "address": "123 Main St, City, Country"
+  "address": "123 Main St"
 }
 ```
 
-**Gender Options:**
+- **Response:**
+  - **201 Created**
+  - Body: profile ID or success message
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
+  - 400 for missing required fields
 
-- `MALE`
-- `FEMALE`
-- `OTHER`
+### Update Profile
 
-**Date Format:** `YYYY-MM-DD`
+- **Method:** PUT
+- **Path:** `/api/profiles/{id}`
+- **Description:** Update the profile of the authenticated user.
+- **Request Payload:** Same as Create Profile
+- **Response:**
+  - **201 Created**
+  - Body: profile ID or success message
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
+  - 400 for missing/invalid fields
 
-**Response:** Success message with profile ID
+### Search Profiles
 
----
-
-### 8. Update Profile
-
-Update the current user's profile information.
-
-**Endpoint:** `PUT /api/profiles/{id}`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:**
-
-- `Content-Type: application/json`
-- `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Request Body:** Same as Create Profile
-
-**Response:** Success message
-
----
-
-### 9. Search Profiles
-
-Search and filter profiles with pagination.
-
-**Endpoint:** `GET /api/profiles`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:** `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Query Parameters (all optional):**
-
-- `role`: Filter by role (`ADMIN`, `TEACHER`, `STUDENT`)
-- `name`: Search by name (partial match)
-- `page`: Page number (default: 0)
-- `size`: Page size (default: 10)
-
-**Example:**
-
-```
-GET /api/profiles?role=TEACHER&name=John&page=0&size=5
-```
-
-**Response:** Paginated list of profiles
+- **Method:** GET
+- **Path:** `/api/profiles`
+- **Description:** Search/filter profiles with pagination.
+- **Query Params:**
+  - `role` (optional): `ADMIN`, `TEACHER`, `STUDENT`
+  - `name` (optional): string
+  - `page` (default 0): int
+  - `size` (default 10): int
+- **Response:**
+  - **200 OK**
+  - Body: paginated list of profiles
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
 
 ---
 
-## 📚 Subject Management Endpoints
+## Sections
 
-### 10. Create Subject
+### Create Section
 
-Create a new subject.
-
-**Endpoint:** `POST /api/subjects`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:**
-
-- `Content-Type: application/json`
-- `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Request Body:**
-
-```json
-{
-  "subjectCode": "MATH101",
-  "name": "Mathematics 101"
-}
-```
-
-**Response:** Success message with subject ID
-
----
-
-### 11. Update Subject
-
-Update an existing subject.
-
-**Endpoint:** `PUT /api/subjects`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:**
-
-- `Content-Type: application/json`
-- `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Request Body:**
-
-```json
-{
-  "id": "123e4567-e89b-12d3-a456-426614174000",
-  "subjectCode": "MATH102",
-  "name": "Advanced Mathematics",
-  "createdAt": "2025-09-05T10:00:00",
-  "updatedAt": "2025-09-05T15:30:00"
-}
-```
-
-**DateTime Format:** `YYYY-MM-DDTHH:mm:ss`
-
-**Response:** Success message
-
----
-
-### 12. Search Subjects
-
-Search and filter subjects with pagination.
-
-**Endpoint:** `GET /api/subjects`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:** `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Query Parameters (all optional):**
-
-- `subjectCode`: Search by subject code (partial match)
-- `name`: Search by subject name (partial match)
-- `page`: Page number (default: 0)
-- `size`: Page size (default: 10)
-
-**Example:**
-
-```
-GET /api/subjects?subjectCode=MATH&name=Mathematics&page=0&size=10
-```
-
-**Response:** Paginated list of subjects
-
----
-
-## 🏫 Section Management Endpoints
-
-### 13. Create Section
-
-Create a new class section.
-
-**Endpoint:** `POST /api/sections`  
-**Authentication:** Required (JWT Cookie)  
-**Headers:**
-
-- `Content-Type: application/json`
-- `Cookie: jwt=YOUR_JWT_TOKEN`
-
-**Request Body:**
+- **Method:** POST
+- **Path:** `/api/sections`
+- **Description:** Create a new section.
+- **Request Payload:**
 
 ```json
 {
   "name": "Section A",
   "gradeLevel": "Grade 10",
-  "adviser": "John Doe"
+  "adviser": "Jane Smith"
 }
 ```
 
-**Note:** The `adviser` field should contain the full name of an existing teacher profile.
+- **Response:**
+  - **201 Created**
+  - Body: section ID or success message
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
+  - Adviser must exist
 
-**Response:** Success message with section ID
+### Search Sections
 
----
+- **Method:** GET
+- **Path:** `/api/sections`
+- **Description:** Search/filter sections with pagination.
+- **Query Params:**
+  - `name`, `gradeLevel`, `adviserName` (all optional)
+  - `page` (default 0), `size` (default 10)
+- **Response:**
+  - **200 OK**
+  - Body: paginated list of sections
+- **Edge Cases:**
+  - No auth required
 
-### 14. Search Sections
+### Update Section
 
-Search and filter sections with pagination.
-
-**Endpoint:** `GET /api/sections`  
-**Authentication:** None required
-
-**Query Parameters (all optional):**
-
-- `name`: Search by section name (partial match)
-- `gradeLevel`: Search by grade level (partial match)
-- `adviserName`: Search by adviser name (partial match)
-- `page`: Page number (default: 0)
-- `size`: Page size (default: 10)
-
-**Example:**
-
-```
-GET /api/sections?gradeLevel=Grade%2010&name=Section%20A&page=0&size=10
-```
-
-**Note:** URL encode spaces as `%20`
-
-**Response:** Paginated list of sections
-
----
-
-### 15. Update Section
-
-Update an existing section.
-
-**Endpoint:** `POST /api/sections/{id}`  
-**Authentication:** None required  
-**Headers:** `Content-Type: application/json`
-
-**URL Parameters:**
-
-- `id`: UUID of the section to update
-
-**Request Body:**
+- **Method:** POST
+- **Path:** `/api/sections/{id}`
+- **Description:** Update a section.
+- **Request Payload:**
 
 ```json
 {
-  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "id": "uuid",
   "name": "Section B",
   "gradeLevel": "Grade 11",
   "adviser": "Jane Smith",
@@ -365,104 +244,163 @@ Update an existing section.
 }
 ```
 
-**Response:** Success message
+- **Response:**
+  - **200 OK**
+  - Body: success message
+- **Edge Cases:**
+  - Adviser must exist
 
 ---
 
-## 🔧 Testing with Postman
+## Subjects
 
-### Setting up Authentication
+### Create Subject
 
-1. **Register a user** using `POST /api/users`
-2. **Login** using `POST /api/auth/session`
-3. The JWT token will be automatically set as a cookie
-4. For subsequent requests, ensure cookies are enabled in Postman
+- **Method:** POST
+- **Path:** `/api/subjects`
+- **Description:** Create a new subject.
+- **Request Payload:**
 
-### Cookie Configuration
-
-- Enable "Send cookies" in Postman settings
-- Or manually add `Cookie: jwt=YOUR_JWT_TOKEN` header for authenticated endpoints
-
-### Common Headers
-
-```
-Content-Type: application/json
-Cookie: jwt=YOUR_JWT_TOKEN_HERE
+```json
+{
+  "subjectCode": "MATH101",
+  "name": "Mathematics 101"
+}
 ```
 
-### UUID Format
+- **Response:**
+  - **201 Created**
+  - Body: subject ID or success message
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
 
-All UUIDs should follow the standard format:
+### Update Subject
 
+- **Method:** PUT
+- **Path:** `/api/subjects`
+- **Description:** Update a subject.
+- **Request Payload:**
+
+```json
+{
+  "subjectCode": "MATH102",
+  "name": "Advanced Math",
+  "id": "uuid",
+  "createdAt": "2025-09-05T10:00:00",
+  "updatedAt": "2025-09-05T15:30:00"
+}
 ```
-123e4567-e89b-12d3-a456-426614174000
-```
 
-### Date/DateTime Formats
+- **Response:**
+  - **201 Created**
+  - Body: success message
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
 
-- **Date:** `YYYY-MM-DD` (e.g., `2025-09-05`)
-- **DateTime:** `YYYY-MM-DDTHH:mm:ss` (e.g., `2025-09-05T15:30:00`)
+### Search Subjects
+
+- **Method:** GET
+- **Path:** `/api/subjects`
+- **Description:** Search/filter subjects with pagination.
+- **Query Params:**
+  - `subjectCode`, `name` (optional)
+  - `page` (default 0), `size` (default 10)
+- **Response:**
+  - **200 OK**
+  - Body: paginated list of subjects
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
+
+### Delete Subject
+
+- **Method:** DELETE
+- **Path:** `/api/subjects?id=UUID`
+- **Description:** Delete a subject by ID.
+- **Response:**
+  - **200 OK**
+  - Body: empty
+- **Edge Cases:**
+  - Requires valid `jwt` cookie
+  - 400 if id missing/invalid
 
 ---
 
-## 📋 Example Test Flow
+## General Notes
 
-1. **Register a new user:**
-
-   ```
-   POST /api/users
-   Body: {"email": "test@example.com", "password": "password123", "role": "TEACHER"}
-   ```
-
-2. **Login with the user:**
-
-   ```
-   POST /api/auth/session
-   Body: {"email": "test@example.com", "password": "password123"}
-   ```
-
-3. **Create a profile:**
-
-   ```
-   POST /api/profiles
-   Body: {"firstName": "John", "lastName": "Doe", "gender": "MALE"}
-   ```
-
-4. **Create a subject:**
-
-   ```
-   POST /api/subjects
-   Body: {"subjectCode": "MATH101", "name": "Mathematics 101"}
-   ```
-
-5. **Create a section:**
-   ```
-   POST /api/sections
-   Body: {"name": "Section A", "gradeLevel": "Grade 10", "adviser": "John Doe"}
-   ```
+- All authenticated endpoints require a valid `jwt` cookie.
+- All dates/times use ISO 8601 format.
+- All UUIDs must be valid.
+- Validation errors return 400 with error details.
+- Unauthorized access returns 401.
+- Not found returns 404.
+- Server errors return 500.
 
 ---
 
-## ⚠️ Error Handling
+## Example Error Response
 
-The API returns appropriate HTTP status codes:
-
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `404` - Not Found
-- `500` - Internal Server Error
-
-Error responses typically include a message describing the issue.
+```json
+{
+  "status": "error",
+  "message": "Invalid credentials"
+}
+```
 
 ---
 
-## 🚀 Environment Setup
+For further details, see the DTO classes in `src/main/kotlin/com/kapston/CTU_DB_API/domain/dto/`.
 
-Make sure the following environment variables are configured:
+After installing, set up your environment variables:
 
-- `JWT_SECRET` - Base64 encoded JWT secret key
-- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` - Database configuration
+➤ Set JAVA_HOME
 
-For development, the API runs on `http://localhost:8080` by default.
+<details> <summary>📍 Windows Instructions</summary>
+Press the <kbd>Windows</kbd> key and search for env, then press Enter
+
+Click on Environment Variables
+
+Under User Variables or System Variables, click New
+
+Add the following:
+
+Variable Name: JAVA_HOME
+
+Variable Value: C:\Program Files\Java\jdk-21 --change the version you're using
+
+Find and select the Path variable, then click Edit
+
+Click New and add: %JAVA_HOME%\bin
+
+</details>
+*******************************************
+✅ Install PostgreSQL
+Download PostgreSQL from:
+👉 https://www.postgresql.org/download/
+
+For visual guidance, see this YouTube tutorial:
+▶️ PostgreSQL Installation Guide
+
+✅ Set Up the Database
+Once PostgreSQL is installed, open a terminal and run:
+
+<details> createdb ctu_db </details>
+
+This will create a new database named ctu_db.
+
+---
+
+📦 .env Template
+Create a .env in the root folder:
+
+--Paste this
+
+<details>
+spring.datasource.url=jdbc:postgresql://localhost:5432/ctu_db
+  
+spring.datasource.username={yourusername}
+
+spring.datasource.password={yourpassword}
+
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+</details>

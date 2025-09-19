@@ -152,21 +152,34 @@ class UsersService {
       contactNumber: string;
       address: string;
     }
-  ): Promise<string> {
+  ): Promise<{ message: string; updatedUser?: Profile }> {
     try {
-      const response = await apiClient.put<ApiSuccessResponse>(
-        `/api/profiles/${id}`,
-        {
-          id,
-          ...userData,
-        }
+      console.log("📝 Updating user with ID:", id);
+      console.log("📝 Making PUT request to: /api/users");
+      console.log("📝 User data:", userData);
+
+      const response = await apiClient.put<{ message: string; user?: Profile }>(
+        `/api/users?id=${id}`,
+        userData
       );
-      return response.data.message;
+
+      console.log("✅ Update user response:", response);
+      console.log("✅ Update user response data:", response.data);
+
+      return {
+        message: response.data.message,
+        updatedUser: response.data.user, // If backend returns updated user data
+      };
     } catch (error) {
+      console.error("❌ Update user failed:", error);
       if (error instanceof ApiError) {
-        throw new Error(this.getErrorMessage(error));
+        console.error("❌ API Error details:", {
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
       }
-      throw new Error("Failed to update user");
+      throw error;
     }
   }
 
@@ -188,17 +201,30 @@ class UsersService {
   }
 
   /**
+   * Update user status (activate/deactivate)
+   * Backend expects PUT /api/users?id=UUID with no body per README
+   */
+  async updateUserStatus(id: string): Promise<string> {
+    try {
+      const response = await apiClient.put<ApiSuccessResponse>(
+        `/api/users?id=${encodeURIComponent(id)}`,
+        undefined
+      );
+      return response.data.message;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw new Error(this.getErrorMessage(error));
+      }
+      throw new Error("Failed to update user status");
+    }
+  }
+
+  /**
    * Toggle user status (activate/deactivate)
-   * Note: This functionality might need backend implementation
    */
   async toggleUserStatus(id: string): Promise<string> {
     try {
-      // Using PUT instead of PATCH since patch method doesn't exist
-      const response = await apiClient.put<ApiSuccessResponse>(
-        `/api/users/${id}/status`,
-        {}
-      );
-      return response.data.message;
+      return await this.updateUserStatus(id);
     } catch (error) {
       if (error instanceof ApiError) {
         throw new Error(this.getErrorMessage(error));

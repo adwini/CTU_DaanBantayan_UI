@@ -158,22 +158,35 @@ export function ManageSubjectsComponent() {
   const handleAddSubject = async (subject: Omit<Subject, "id">) => {
     try {
       setError(null);
-      // Local duplicate check
-      const duplicate = subjects.find(
+      
+      // Validate required fields
+      if (!subject.subjectCode || !String(subject.subjectCode).trim()) {
+        throw new Error("Subject code is required");
+      }
+      if (!subject.subjectName || !String(subject.subjectName).trim()) {
+        throw new Error("Subject name is required");
+      }
+
+      // Local duplicate check for subject code
+      const duplicateCode = subjects.find(
         (s) =>
           s.subjectCode.trim().toLowerCase() ===
-            String(subject.subjectCode).trim().toLowerCase() ||
-          s.subjectName.trim().toLowerCase() ===
-            String(subject.subjectName).trim().toLowerCase()
+          String(subject.subjectCode).trim().toLowerCase()
       );
-      if (duplicate) {
-        setError(
-          "A subject with this code or name already exists. Please choose a different code or name."
-        );
-        throw new Error(
-          "A subject with this code or name already exists. Please choose a different code or name."
-        );
+      if (duplicateCode) {
+        throw new Error("Subject code already exists. Please choose a different code.");
       }
+
+      // Local duplicate check for subject name
+      const duplicateName = subjects.find(
+        (s) =>
+          s.subjectName.trim().toLowerCase() ===
+          String(subject.subjectName).trim().toLowerCase()
+      );
+      if (duplicateName) {
+        throw new Error("Subject name already exists. Please choose a different name.");
+      }
+
       const newSubjectData = {
         subjectCode: subject.subjectCode as string,
         name: subject.subjectName as string,
@@ -185,16 +198,9 @@ export function ManageSubjectsComponent() {
       // Refresh the subjects list
       await loadSubjects();
     } catch (error) {
-      let errorMessage =
+      // Don't set error state for validation errors - they will be shown in modal
+      const errorMessage =
         error instanceof Error ? error.message : "Failed to add subject";
-      if (
-        errorMessage.includes("already exists") ||
-        errorMessage.includes("duplicate")
-      ) {
-        errorMessage =
-          "A subject with this code or name already exists. Please choose a different code or name.";
-      }
-      setError(errorMessage);
       throw new Error(errorMessage);
     }
   };
@@ -205,68 +211,66 @@ export function ManageSubjectsComponent() {
   ) => {
     try {
       setError(null);
+      
       // Find the current subject
       const currentSubject = subjects.find((s) => s.id === id);
       if (!currentSubject) {
         throw new Error("Subject not found in local state");
       }
-      // Local duplicate check (exclude current subject)
-      const duplicate = subjects.find(
-        (s) =>
-          s.id !== id &&
-          (s.subjectCode.trim().toLowerCase() ===
-            (subjectData.subjectCode?.trim().toLowerCase() ||
-              currentSubject.subjectCode.trim().toLowerCase()) ||
-            s.subjectName.trim().toLowerCase() ===
-              (subjectData.subjectName?.trim().toLowerCase() ||
-                currentSubject.subjectName.trim().toLowerCase()))
-      );
-      if (duplicate) {
-        setError(
-          "A subject with this code or name already exists. Please choose a different code or name."
-        );
-        throw new Error(
-          "A subject with this code or name already exists. Please choose a different code or name."
-        );
+
+      // Get the new values (use provided data or fall back to current values)
+      const newSubjectCode = subjectData.subjectCode?.trim() || currentSubject.subjectCode;
+      const newSubjectName = subjectData.subjectName?.trim() || currentSubject.subjectName;
+
+      // Validate required fields
+      if (!newSubjectCode) {
+        throw new Error("Subject code is required");
       }
+      if (!newSubjectName) {
+        throw new Error("Subject name is required");
+      }
+
+      // Check for duplicate subject code (exclude current subject)
+      // const duplicateCode = subjects.find(
+      //   (s) =>
+      //     s.id !== id &&
+      //     s.subjectCode.trim().toLowerCase() === newSubjectCode.toLowerCase()
+      // );
+      // if (duplicateCode) {
+      //   throw new Error("Subject code already exists. Please choose a different code.");
+      // }
+
+      // // Check for duplicate subject name (exclude current subject)
+      // const duplicateName = subjects.find(
+      //   (s) =>
+      //     s.id !== id &&
+      //     s.subjectName.trim().toLowerCase() === newSubjectName.toLowerCase()
+      // );
+      // if (duplicateName) {
+      //   throw new Error("Subject name already exists. Please choose a different name.");
+      // }
 
       const updateData = {
         id: currentSubject.uuid || currentSubject.id.toString(), // Use original UUID
-        subjectCode:
-          (subjectData.subjectCode as string) || currentSubject.subjectCode,
-        name: (subjectData.subjectName as string) || currentSubject.subjectName,
+        subjectCode: newSubjectCode,
+        name: newSubjectName,
         createdAt: new Date().toISOString().slice(0, 19),
         updatedAt: new Date().toISOString().slice(0, 19),
       };
 
-      console.log("📝 Using UUID for update:", currentSubject.uuid);
-      console.log("📝 Update data:", updateData);
-
-      console.log("📝 Updating subject with data:", updateData);
-
-      const result = await subjectsService.updateSubject(updateData);
-      console.log("✅ Subject updated successfully:", result);
-
       // Refresh the subjects list
       await loadSubjects();
     } catch (error) {
-      let errorMessage =
+      // Don't set error state for validation errors - they will be shown in modal
+      const errorMessage =
         error instanceof Error ? error.message : "Failed to edit subject";
-      if (
-        errorMessage.includes("already exists") ||
-        errorMessage.includes("duplicate")
-      ) {
-        errorMessage =
-          "A subject with this code or name already exists. Please choose a different code or name.";
-      }
-      setError(errorMessage);
       throw new Error(errorMessage);
     }
   };
 
   const handleDeleteSubject = async (id: number) => {
     // Add to deleting set to show loading state
-    setDeletingIds(prev => new Set(prev).add(id));
+    setDeletingIds((prev) => new Set(prev).add(id));
 
     try {
       setError(null);
@@ -319,7 +323,7 @@ export function ManageSubjectsComponent() {
       throw new Error(errorMessage);
     } finally {
       // Remove from deleting set regardless of success/failure
-      setDeletingIds(prev => {
+      setDeletingIds((prev) => {
         const newSet = new Set(prev);
         newSet.delete(id);
         return newSet;
@@ -332,15 +336,15 @@ export function ManageSubjectsComponent() {
     return <TableLoading text="Loading subjects..." />;
   }
 
-  // Show error state
-  if (error) {
+  // Show error state only for loading errors, not validation errors
+  if (error && subjects.length === 0) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <p className="text-red-600 mb-4">Error loading subjects</p>
           <p className="text-gray-600">{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => loadSubjects()}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
             Retry
           </button>

@@ -90,6 +90,39 @@ class ApiClient {
         const isAuthFailure =
           error.response?.status === 401 || error.response?.status === 403;
 
+        // Detect 401 Unauthorized with Invalid Token
+        // Safely extract a potential message from response data without using `any`
+        const respData = error.response?.data as unknown;
+        const messageFromData =
+          typeof respData === "string"
+            ? respData
+            : respData &&
+              typeof respData === "object" &&
+              "message" in respData &&
+              typeof (respData as { message?: unknown }).message === "string"
+            ? (respData as { message: string }).message
+            : undefined;
+
+        const isInvalidToken =
+          error.response?.status === 401 &&
+          typeof messageFromData === "string" &&
+          messageFromData.includes("Invalid Token");
+
+        if (isInvalidToken) {
+          // Prompt user to refresh token (UI integration required)
+          if (window && typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("triggerRefreshToken", {
+                detail: {
+                  reason: "Invalid Token",
+                  status: 401,
+                  url: error.config?.url,
+                },
+              })
+            );
+          }
+        }
+
         if (!isAuthFailure || !isAuthEndpoint) {
           console.error("🚨 API Response Error:", {
             status: error.response?.status,

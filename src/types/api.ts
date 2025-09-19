@@ -120,6 +120,23 @@ export interface ProfileSearchParams {
   size?: number;
 }
 
+// Schedule interfaces (backend API)
+export interface Schedule extends BaseEntity {
+  teacher: Profile;
+  subject: Subject;
+  section: Section;
+  startTime: string; // ISO 8601 format
+  endTime: string; // ISO 8601 format
+}
+
+export interface CreateScheduleRequest {
+  teacher: Partial<Profile>;
+  subject: Partial<Subject>;
+  section: Partial<Section>;
+  startTime: string; // ISO 8601 format
+  endTime: string; // ISO 8601 format
+}
+
 // Teacher Load interfaces (frontend-specific)
 export interface TeacherLoad extends BaseEntity {
   teacherName: string;
