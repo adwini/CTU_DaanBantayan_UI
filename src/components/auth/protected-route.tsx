@@ -27,40 +27,40 @@ const DefaultLoadingComponent = () => <PageLoading text="Loading..." />;
 /**
  * Unauthorized access component
  */
-const DefaultUnauthorizedComponent = () => {
-  const router = useRouter();
+// const DefaultUnauthorizedComponent = () => {
+//   const router = useRouter();
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center max-w-md mx-auto p-6">
-        <div className="mb-4">
-          <svg
-            className="mx-auto h-16 w-16 text-red-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 16.5c-.77.833.192 2.5 1.732 2.5z"
-            />
-          </svg>
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-        <p className="text-gray-600 mb-6">
-          You don&apos;t have permission to access this page. Please contact
-          your administrator if you believe this is an error.
-        </p>
-        <button
-          onClick={() => router.replace("/")}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-          Go to Login
-        </button>
-      </div>
-    </div>
-  );
-};
+//   return (
+//     <div className="flex items-center justify-center min-h-screen bg-gray-50">
+//       <div className="text-center max-w-md mx-auto p-6">
+//         <div className="mb-4">
+//           <svg
+//             className="mx-auto h-16 w-16 text-red-500"
+//             fill="none"
+//             viewBox="0 0 24 24"
+//             stroke="currentColor">
+//             <path
+//               strokeLinecap="round"
+//               strokeLinejoin="round"
+//               strokeWidth={2}
+//               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 16.5c-.77.833.192 2.5 1.732 2.5z"
+//             />
+//           </svg>
+//         </div>
+//         <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+//         <p className="text-gray-600 mb-6">
+//           You don&apos;t have permission to access this page. Please contact
+//           your administrator if you believe this is an error.
+//         </p>
+//         <button
+//           onClick={() => router.replace("/")}
+//           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+//           Go to Login
+//         </button>
+//       </div>
+//     </div>
+//   );
+// };
 
 /**
  * Protected Route Component
@@ -70,7 +70,7 @@ export function ProtectedRoute({
   requiredRoles = [],
   fallbackPath = "/login",
   loadingComponent = <DefaultLoadingComponent />,
-  unauthorizedComponent = <DefaultUnauthorizedComponent />,
+  unauthorizedComponent = "/unauthorized",
 }: ProtectedRouteProps) {
   const { authState } = useAuth();
   const router = useRouter();
@@ -96,7 +96,6 @@ export function ProtectedRoute({
 
       if (!hasRequiredRole) {
         // User is authenticated but doesn't have the required role
-        // You might want to redirect to a different page based on their role
         console.warn(
           `User with role ${
             authState.user.role
@@ -104,6 +103,7 @@ export function ProtectedRoute({
             ", "
           )}`
         );
+        router.push("/unauthorized");
       }
     }
   }, [

@@ -84,7 +84,7 @@ export interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
-  getCurrentUser: () => Promise<void>;
+  getCurrentUser: () => Promise<ProfileResponse | void>;
   refreshProfile: () => Promise<void>;
   clearError: () => void;
 

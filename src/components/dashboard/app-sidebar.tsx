@@ -38,11 +38,12 @@ export type NavigationItem =
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onNavigate?: (item: NavigationItem) => void;
   activeItem?: NavigationItem;
+  isAdmin?: boolean;
 }
-
 export function AppSidebar({
   onNavigate,
   activeItem,
+  isAdmin,
   ...props
 }: AppSidebarProps) {
   const { setOpenMobile } = useSidebar();
@@ -80,18 +81,20 @@ export function AppSidebar({
           <SidebarGroup>
             <SidebarGroupLabel>Management</SidebarGroupLabel>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => handleNavigation("manage-users-reusable")}
-                  className={
-                    activeItem === "manage-users-reusable"
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "cursor-pointer"
-                  }>
-                  <IconUsers />
-                  <span>Manage Users</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => handleNavigation("manage-users-reusable")}
+                    className={
+                      activeItem === "manage-users-reusable"
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "cursor-pointer"
+                    }>
+                    <IconUsers />
+                    <span>Manage Users</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => handleNavigation("manage-sections")}

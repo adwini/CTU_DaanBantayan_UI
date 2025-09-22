@@ -23,7 +23,6 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const { login, authState } = useAuth();
-  const router = useRouter();
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -33,16 +32,6 @@ export function LoginForm({
     email?: string;
     password?: string;
   }>({});
-
-  useEffect(() => {
-    if (authState.isAuthenticated && !authState.isLoading) {
-      const redirectPath =
-        (typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("redirect")
-          : null) || "/admin-dashboard";
-      router.push(redirectPath);
-    }
-  }, [authState.isAuthenticated, authState.isLoading, router]);
 
   if (authState.isAuthenticated && !authState.isLoading) {
     return <RedirectLoading text="Redirecting to dashboard..." />;
@@ -110,7 +99,7 @@ export function LoginForm({
           <CardHeader>
             <CardTitle>Login to your account</CardTitle>
             <CardDescription>
-              Enter your email and password to access the CTU system
+              Enter your email and password to continue.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -148,11 +137,11 @@ export function LoginForm({
                 <div className="grid gap-3">
                   <div className="flex items-center">
                     <Label htmlFor="password">Password</Label>
-                    <a
+                    {/* <a
                       href="#"
                       className="ml-auto inline-block text-sm underline-offset-4 hover:underline text-muted-foreground">
                       Forgot your password?
-                    </a>
+                    </a> */}
                   </div>
                   <div className="relative">
                     <Input

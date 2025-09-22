@@ -4,10 +4,7 @@ import { useState } from "react";
 import { AppSidebar, NavigationItem } from "@/components/dashboard/app-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { AdminRoute, ProtectedRoute } from "@/components/auth/protected-route";
-import { Role } from "@/types/auth";
 import { DashboardHomeComponent } from "@/components/dashboard/pages/DashboardHomeComponent";
-import { ManageUsersComponent as ManageUsersReusable } from "@/components/dashboard/pages/ManageUsersComponent";
 import { ManageSectionsComponent } from "@/components/dashboard/pages/ManageSectionsComponent";
 import { ManageSubjectsComponent } from "@/components/dashboard/pages/ManageSubjectsComponent";
 import { TeacherLoadsComponent } from "@/components/dashboard/pages/TeacherLoadsComponent";
@@ -15,11 +12,11 @@ import { GradeMonitoringComponent } from "@/components/dashboard/pages/GradeMoni
 import { AttendanceOverviewComponent } from "@/components/dashboard/pages/AttendanceOverviewComponent";
 import { ReportsComponent } from "@/components/dashboard/pages/ReportsComponent";
 import { SettingsComponent } from "@/components/dashboard/pages/SettingsComponent";
+import { useAuth } from "@/contexts/auth.context";
 
-import data from "./data.json";
-
-export default function Page() {
+export default function TeacherDashboard() {
   const [activeView, setActiveView] = useState<NavigationItem>("dashboard");
+  const { user } = useAuth();
 
   const handleNavigation = (item: NavigationItem) => {
     setActiveView(item);
@@ -29,8 +26,6 @@ export default function Page() {
     switch (activeView) {
       case "dashboard":
         return <DashboardHomeComponent />;
-      case "manage-users-reusable":
-        return <ManageUsersReusable />;
       case "manage-sections":
         return <ManageSectionsComponent />;
       case "manage-subjects":
@@ -51,25 +46,23 @@ export default function Page() {
   };
 
   return (
-    <ProtectedRoute requiredRoles={[Role.ADMIN]}>
-      <SidebarProvider
-        style={
-          {
-            "--sidebar-width": "calc(var(--spacing) * 72)",
-            "--header-height": "calc(var(--spacing) * 12)",
-          } as React.CSSProperties
-        }>
-        <AppSidebar
-          variant="inset"
-          onNavigate={handleNavigation}
-          activeItem={activeView}
-          isAdmin={true}
-        />
-        <SidebarInset>
-          <SiteHeader activeItem={activeView} />
-          <div className="flex flex-1 flex-col">{renderContent()}</div>
-        </SidebarInset>
-      </SidebarProvider>
-    </ProtectedRoute>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }>
+      <AppSidebar
+        variant="inset"
+        onNavigate={handleNavigation}
+        activeItem={activeView}
+        role={user?.role}
+      />
+      <SidebarInset>
+        <SiteHeader activeItem={activeView} />
+        <div className="flex flex-1 flex-col">{renderContent()}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

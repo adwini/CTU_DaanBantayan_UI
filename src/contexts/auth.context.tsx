@@ -312,6 +312,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = useCallback(
     async (credentials: LoginRequest) => {
       try {
+        // Always clear auth data before login to prevent stale session issues
+        clearAllAuthData();
         dispatch({ type: "LOGIN_START" });
 
         console.log("🔐 Starting login process...");
@@ -482,13 +484,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       console.log("👤 Fetching current user...");
       const profile = await authService.getCurrentUser();
-      dispatch({
-        type: "LOGIN_SUCCESS",
-        payload: {
-          user: profile.user,
-          profile: profile,
-        },
-      });
+      // Return profile instead of dispatching
+      return profile;
     } catch (error) {
       console.error("❌ Failed to get current user:", error);
       // Don't logout automatically, let user decide
